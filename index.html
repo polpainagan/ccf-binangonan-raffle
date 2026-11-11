@@ -1,0 +1,973 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CCF Raffle Draw</title>
+<link rel="icon" href="ccf-logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ground: #f6f7fb;
+    --surface: #ffffff;
+    --ink: #16163a;
+    --muted: #5a5f7a;
+    --line: #e4e6ef;
+    --brand: #17a5b8;
+    --accent: #0e7c8c;
+    --accent-dark: #0a6371;
+    --accent-soft: #dff2f4;
+    --accent-ink: #0a4f5a;
+    --warm: #c2410c;
+    --warm-soft: #fff1ea;
+    --error: #b42318;
+    --gold: #f5c542;
+    --radius: 14px;
+    --stage-1: #06323a;
+    --stage-2: #0a5361;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 16px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, p { margin: 0; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 5;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; }
+  .brand img { width: 34px; height: 34px; }
+  .tabs { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+  .tab {
+    border: 0; background: transparent; padding: 8px 14px; border-radius: 999px;
+    font-weight: 700; color: var(--muted);
+  }
+  .tab:hover { background: var(--accent-soft); color: var(--accent-ink); }
+  .tab[aria-selected="true"] { background: var(--accent); color: #fff; }
+  .tab .count { font-weight: 600; opacity: .8; margin-left: 4px; }
+
+  /* ---------- Generic UI ---------- */
+  .page { max-width: 1040px; margin: 0 auto; padding: 24px 20px 60px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+  .card + .card { margin-top: 16px; }
+  .card h2 { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+  .hint { color: var(--muted); font-size: 14px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+  .field { display: flex; flex-direction: column; gap: 4px; flex: 1 1 140px; }
+  .field label { font-size: 13px; font-weight: 700; color: var(--muted); }
+  input[type=text], textarea { text-transform: uppercase; }
+  select:invalid { color: #8a8fa8; }
+  select option { color: var(--ink); }
+  input[type=text]::placeholder, textarea::placeholder { text-transform: none; }
+  input[type=text], input[type=number], textarea, select {
+    border: 1px solid #d5d7e3; border-radius: 10px; padding: 9px 11px; background: #fff; width: 100%;
+  }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--brand); outline-offset: 1px; border-color: transparent; }
+  textarea { min-height: 140px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 14px; }
+  .btn {
+    border: 1px solid transparent; background: var(--accent); color: #fff; font-weight: 700;
+    padding: 9px 16px; border-radius: 10px; white-space: nowrap;
+  }
+  .btn:hover { background: var(--accent-dark); }
+  .btn.ghost { background: #fff; color: var(--accent-ink); border-color: #d5d7e3; }
+  .btn.ghost:hover { background: var(--accent-soft); }
+  .btn.danger { background: #fff; color: var(--error); border-color: #f0c4c0; }
+  .btn.danger:hover { background: #fdecea; }
+  .btn.small { padding: 5px 10px; font-size: 14px; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .stack > * + * { margin-top: 12px; }
+  .check { display: inline-flex; gap: 8px; align-items: center; font-weight: 700; white-space: nowrap; cursor: pointer; }
+  .check input { width: 18px; height: 18px; accent-color: var(--accent); }
+  .pill.grand { background: #fff5d6; color: #8a5a00; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+  .spacer { flex: 1; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { font-size: 13px; color: var(--muted); font-weight: 700; }
+  td.num, th.num { text-align: right; width: 1%; white-space: nowrap; }
+  td.actions { text-align: right; white-space: nowrap; width: 1%; }
+  .table-wrap { overflow-x: auto; margin-top: 12px; max-height: 520px; overflow-y: auto; }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-ink); font-size: 13px; font-weight: 700; }
+  .pill.warm { background: var(--warm-soft); color: var(--warm); }
+  .pill.done { background: #e7f6ec; color: #17663a; }
+  .empty { padding: 28px; text-align: center; color: var(--muted); }
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+    background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 10px; font-weight: 600;
+    opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 50;
+  }
+  .toast.show { opacity: 1; }
+
+  /* ---------- Draw stage ---------- */
+  #stage {
+    min-height: calc(100vh - 59px);
+    background: radial-gradient(1200px 600px at 50% 20%, var(--stage-2), var(--stage-1));
+    color: #fff; display: flex; flex-direction: column; align-items: center;
+    padding: 28px 20px 32px; position: relative; overflow: hidden;
+  }
+  #stage:fullscreen { min-height: 100vh; }
+  .stage-head { display: flex; align-items: center; gap: 12px; width: 100%; max-width: 1200px; }
+  .stage-head img { width: 54px; height: 54px; }
+  .stage-title { font-size: clamp(20px, 2.6vw, 30px); font-weight: 800; letter-spacing: -0.01em; }
+  .stage-head .spacer { flex: 1; }
+  .icon-btn {
+    background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); color: #fff;
+    border-radius: 10px; padding: 8px 12px; font-weight: 700; font-size: 14px;
+  }
+  .icon-btn:hover { background: rgba(255,255,255,.2); }
+
+  .prize-picker { display: flex; align-items: center; gap: 12px; margin-top: 4vh; }
+  .prize-picker .icon-btn { font-size: 20px; padding: 6px 14px; }
+  .prize-label { text-align: center; }
+  .prize-label .kicker { text-transform: uppercase; letter-spacing: .18em; font-size: 14px; font-weight: 700; color: var(--gold); }
+  .prize-name { font-size: clamp(30px, 5vw, 64px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+  .prize-left { margin-top: 6px; font-size: 16px; opacity: .8; font-weight: 600; }
+
+  .reveal {
+    margin-top: 4vh; width: 100%; max-width: 1100px; min-height: 230px;
+    background: rgba(255,255,255,.06); border: 2px solid rgba(255,255,255,.14);
+    border-radius: 28px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 28px 24px; text-align: center; transition: border-color .3s, background .3s, box-shadow .3s;
+  }
+  .reveal.won { border-color: var(--gold); background: rgba(245,197,66,.10); box-shadow: 0 0 80px rgba(245,197,66,.25); }
+  .winner-name { font-size: clamp(34px, 6vw, 84px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.08; word-break: break-word; }
+  .winner-ministry { margin-top: 12px; font-size: clamp(20px, 2.8vw, 36px); font-weight: 600; color: #bdeef4; }
+  .reveal.rolling .winner-name { opacity: .85; }
+  .reveal.won .winner-name { animation: pop .5s ease-out; }
+  .reveal .placeholder { font-size: clamp(22px, 3vw, 34px); opacity: .55; font-weight: 600; }
+  @keyframes pop { 0% { transform: scale(.85); } 60% { transform: scale(1.06); } 100% { transform: scale(1); } }
+
+  .stage-actions { display: flex; gap: 12px; margin-top: 4vh; flex-wrap: wrap; justify-content: center; }
+  .draw-btn {
+    background: var(--gold); color: #3a2a00; border: 0; border-radius: 999px;
+    font-size: clamp(20px, 2.4vw, 28px); font-weight: 800; padding: 16px 48px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.25);
+  }
+  .draw-btn:hover { filter: brightness(1.06); }
+  .draw-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .stage-actions .icon-btn { font-size: 16px; padding: 12px 20px; border-radius: 999px; }
+  .stage-foot { margin-top: 18px; font-size: 14px; opacity: .7; text-align: center; }
+  .kbd { display: inline-block; border: 1px solid rgba(255,255,255,.35); border-radius: 6px; padding: 0 6px; font-size: 12px; }
+
+  .recent { margin-top: 3vh; width: 100%; max-width: 1100px; }
+  .recent h3 { font-size: 14px; text-transform: uppercase; letter-spacing: .14em; opacity: .7; margin-bottom: 8px; text-align: center; }
+  .recent ol { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .recent li { background: rgba(255,255,255,.08); border-radius: 999px; padding: 6px 14px; font-size: 15px; font-weight: 600; }
+  .recent li.forfeit { text-decoration: line-through; opacity: .5; }
+
+  #confetti { position: absolute; inset: 0; pointer-events: none; width: 100%; height: 100%; }
+
+  @media (max-width: 640px) {
+    .topbar { padding: 10px 16px; }
+    .page { padding: 16px 16px 48px; }
+    .tabs { margin-left: 0; }
+    .draw-btn { padding: 14px 32px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><img src="ccf-logo.png" alt="" /> <span>Raffle Draw</span></div>
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="draw">Draw</button>
+    <button class="tab" role="tab" data-tab="prizes">Prizes <span class="count" id="c-prizes"></span></button>
+    <button class="tab" role="tab" data-tab="entrants">Names <span class="count" id="c-entrants"></span></button>
+    <button class="tab" role="tab" data-tab="winners">Winners <span class="count" id="c-winners"></span></button>
+    <button class="tab" role="tab" data-tab="settings">Settings</button>
+  </nav>
+</header>
+
+<!-- ===== DRAW ===== -->
+<section id="tab-draw" hidden>
+  <div id="stage">
+    <canvas id="confetti"></canvas>
+    <div class="stage-head">
+      <img src="ccf-logo.png" alt="" />
+      <div class="stage-title" id="stage-title"></div>
+      <div class="spacer"></div>
+      <button class="icon-btn" id="fs-btn" title="Full screen (F)">⛶ Full screen</button>
+    </div>
+
+    <div class="prize-picker">
+      <button class="icon-btn" id="prev-prize" title="Previous prize (←)">‹</button>
+      <div class="prize-label">
+        <div class="kicker" id="kicker">Now drawing</div>
+        <div class="prize-name" id="prize-name">—</div>
+        <div class="prize-left" id="prize-left"></div>
+      </div>
+      <button class="icon-btn" id="next-prize" title="Next prize (→)">›</button>
+    </div>
+
+    <div class="reveal" id="reveal">
+      <div class="placeholder" id="placeholder">Press Draw to pick a winner</div>
+      <div class="winner-name" id="winner-name" hidden></div>
+      <div class="winner-ministry" id="winner-ministry" hidden></div>
+    </div>
+
+    <div class="stage-actions">
+      <button class="draw-btn" id="draw-btn">Draw</button>
+      <button class="draw-btn" id="nextprize-btn" hidden>Next prize ›</button>
+      <button class="icon-btn" id="redraw-btn" hidden title="Winner is not here — mark absent and draw again">Not here — draw again</button>
+    </div>
+    <div class="stage-foot" id="stage-foot"></div>
+
+    <div class="recent" id="recent"></div>
+  </div>
+</section>
+
+<!-- ===== PRIZES ===== -->
+<section id="tab-prizes" class="page" hidden>
+  <div class="card stack">
+    <div>
+      <h2>Add a prize</h2>
+      <p class="hint">Prizes are drawn in the order listed. Use the arrows to change the order — usually smaller prizes first, grand prize last.</p>
+      <p class="hint">A person who already won is left out of the next draws. <b>Grand prize</b> is the exception: everyone can win it, even people who already won something.</p>
+    </div>
+    <form class="row" id="prize-form">
+      <div class="field" style="flex: 3 1 260px">
+        <label for="p-name">Prize</label>
+        <input type="text" id="p-name" placeholder="e.g. 1 sack of rice" required />
+      </div>
+      <div class="field" style="flex: 0 1 140px">
+        <label for="p-qty">How many winners</label>
+        <input type="number" id="p-qty" min="1" value="1" required />
+      </div>
+      <label class="check" style="align-self:center">
+        <input type="checkbox" id="p-grand" /> Grand prize
+      </label>
+      <button class="btn" type="submit">Add prize</button>
+    </form>
+  </div>
+  <div class="card">
+    <h2>Prize list</h2>
+    <div id="prize-table"></div>
+  </div>
+</section>
+
+<!-- ===== ENTRANTS ===== -->
+<section id="tab-entrants" class="page" hidden>
+  <div class="card stack">
+    <div>
+      <h2>Add one name</h2>
+    </div>
+    <form class="row" id="entrant-form">
+      <div class="field"><label for="e-last">Last name</label><input type="text" id="e-last" required /></div>
+      <div class="field"><label for="e-first">First name</label><input type="text" id="e-first" required /></div>
+      <div class="field" style="flex: 0 1 90px"><label for="e-mi">M.I.</label><input type="text" id="e-mi" maxlength="3" /></div>
+      <div class="field"><label for="e-min">Ministry</label>
+        <select id="e-min" required><option value="" disabled selected hidden>Choose Ministry...</option></select>
+      </div>
+      <button class="btn" type="submit">Add</button>
+    </form>
+  </div>
+
+  <div class="card stack">
+    <div>
+      <h2>Paste many names</h2>
+      <p class="hint">
+        Copy straight from Excel / Google Sheets with columns <b>Last name · First name · M.I. · Ministry</b>,
+        or type one per line like <code>DELA CRUZ, JUAN M. - SINGLES</code>. A header row is skipped automatically.
+        Ministry should be one of: NXTGEN, ELEVATE MINI, ELEVATE, SINGLES, COUPLES, KSP, SHEPHERD, PASTORAL.
+      </p>
+    </div>
+    <textarea id="bulk" placeholder="DELA CRUZ, JUAN M. - SINGLES&#10;SANTOS, MARIA L. - COUPLES"></textarea>
+    <div class="toolbar">
+      <button class="btn" id="bulk-add">Add these names</button>
+      <label class="btn ghost" style="cursor:pointer">Import CSV file<input type="file" id="csv-file" accept=".csv,.txt,.tsv" hidden /></label>
+      <span class="hint" id="bulk-msg"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="toolbar" style="margin-top:0">
+      <h2 style="margin:0">Names in the raffle</h2>
+      <span class="spacer"></span>
+      <input type="text" id="e-search" placeholder="Search…" style="max-width:220px" />
+      <button class="btn danger small" id="clear-entrants">Remove all</button>
+    </div>
+    <div id="entrant-table"></div>
+  </div>
+</section>
+
+<!-- ===== WINNERS ===== -->
+<section id="tab-winners" class="page" hidden>
+  <div class="card">
+    <div class="toolbar" style="margin-top:0">
+      <h2 style="margin:0">Winners</h2>
+      <span class="spacer"></span>
+      <button class="btn ghost small" id="copy-winners">Copy list</button>
+      <button class="btn ghost small" id="export-winners">Download CSV</button>
+      <button class="btn danger small" id="clear-winners">Clear winners</button>
+    </div>
+    <p class="hint" style="margin-top:6px">“Undo” puts the name back in the draw and frees up the prize slot.</p>
+    <div id="winner-table"></div>
+  </div>
+</section>
+
+<!-- ===== SETTINGS ===== -->
+<section id="tab-settings" class="page" hidden>
+  <div class="card stack">
+    <h2>Event</h2>
+    <div class="field">
+      <label for="s-title">Title shown on the draw screen</label>
+      <input type="text" id="s-title" />
+    </div>
+    <div class="field" style="max-width:260px">
+      <label for="s-roll">Rolling time before the winner shows</label>
+      <select id="s-roll">
+        <option value="2000">2 seconds</option>
+        <option value="3500">3.5 seconds</option>
+        <option value="5000">5 seconds</option>
+        <option value="8000">8 seconds</option>
+      </select>
+    </div>
+  </div>
+  <div class="card stack">
+    <h2>Backup &amp; testing</h2>
+    <p class="hint">Everything is saved in this browser on this computer only. Download a backup before the event in case the browser data is cleared.</p>
+    <div class="toolbar">
+      <button class="btn ghost" id="backup">Download backup</button>
+      <label class="btn ghost" style="cursor:pointer">Restore backup<input type="file" id="restore" accept=".json" hidden /></label>
+      <button class="btn ghost" id="sample">Load sample data (for testing)</button>
+      <button class="btn danger" id="reset-all">Start over (erase everything)</button>
+    </div>
+  </div>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------- State ----------
+  const KEY = 'ccf-raffle-v1';
+  const defaults = () => ({
+    title: 'CCF Binangonan Raffle Draw',
+    rollMs: 3500,
+    prizes: [],     // {id, name, qty}
+    entrants: [],   // {id, last, first, mi, ministry}
+    winners: [],    // {id, prizeId, prizeName, entrantId, name, ministry, at, absent}
+    currentPrizeId: null,
+  });
+  let S = defaults();
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) S = Object.assign(defaults(), JSON.parse(raw));
+  } catch (e) { /* storage unavailable — run in memory */ }
+
+  // Ministries shown in the dropdown (edit this list to add or rename one)
+  const MINISTRIES = ['NXTGEN', 'ELEVATE MINI', 'ELEVATE', 'SINGLES', 'COUPLES', 'KSP', 'SHEPHERD', 'PASTORAL'];
+  document.getElementById('e-min').insertAdjacentHTML('beforeend',
+    MINISTRIES.map(m => `<option value="${m}">${m}</option>`).join(''));
+
+  // Everything is stored in UPPERCASE (names, ministries, prizes, title).
+  const up = (s) => String(s ?? '').toUpperCase();
+  function upperAll() {
+    S.title = up(S.title);
+    S.entrants.forEach(e => { e.last = up(e.last); e.first = up(e.first); e.mi = up(e.mi); e.ministry = up(e.ministry); });
+    S.prizes.forEach(p => { p.name = up(p.name); });
+    S.winners.forEach(w => { w.prizeName = up(w.prizeName); w.name = up(w.name); w.ministry = up(w.ministry); });
+  }
+  upperAll();
+
+  const save = () => { upperAll(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+
+  // Convert text to uppercase as it is typed or pasted into any field
+  document.addEventListener('input', (ev) => {
+    const t = ev.target;
+    if (ev.isComposing || !(t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && t.type === 'text'))) return;
+    const upper = t.value.toUpperCase();
+    if (upper === t.value) return;
+    const s = t.selectionStart, e = t.selectionEnd;
+    t.value = upper;
+    try { t.setSelectionRange(s, e); } catch (err) {}
+  }, true);
+  const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  // Fair random integer in [0, n) using the browser's crypto RNG
+  function randInt(n) {
+    const buf = new Uint32Array(1);
+    const limit = Math.floor(0x100000000 / n) * n;
+    do { crypto.getRandomValues(buf); } while (buf[0] >= limit);
+    return buf[0] % n;
+  }
+
+  // ---------- Formatting ----------
+  const cap = (s) => s.trim().replace(/\s+/g, ' ');
+  function normMI(mi) {
+    mi = (mi || '').replace(/\./g, '').trim();
+    return mi ? mi[0].toUpperCase() + '.' : '';
+  }
+  function fullName(e) {
+    return `${e.last}, ${e.first}${e.mi ? ' ' + e.mi : ''}`;
+  }
+  function displayLine(name, ministry) {
+    return ministry ? `${name} - ${ministry}` : name;
+  }
+
+  // ---------- Parsing pasted names ----------
+  function parseNamePart(s) {
+    // "Last, First M."  or  "First M. Last"
+    s = cap(s);
+    let last, rest;
+    if (s.includes(',')) {
+      [last, ...rest] = s.split(',');
+      rest = rest.join(' ');
+    } else {
+      const parts = s.split(' ');
+      last = parts.pop();
+      rest = parts.join(' ');
+    }
+    const toks = cap(rest).split(' ').filter(Boolean);
+    let mi = '';
+    if (toks.length > 1 && toks[toks.length - 1].replace('.', '').length <= 2) mi = toks.pop();
+    return { last: cap(last), first: toks.join(' '), mi: normMI(mi) };
+  }
+
+  function parseLine(line) {
+    line = line.replace(/\r/g, '');
+    if (!line.trim()) return null;
+    let cols;
+    if (line.includes('\t')) cols = line.split('\t');
+    else if (/\s[-–—]\s/.test(line)) {
+      const [namePart, ...min] = line.split(/\s[-–—]\s/);
+      const n = parseNamePart(namePart);
+      return { ...n, ministry: cap(min.join(' - ')) };
+    } else cols = line.split(/[,;]/);
+    cols = cols.map(c => cap(c.replace(/^"|"$/g, '')));
+    if (cols.length >= 4) return { last: cols[0], first: cols[1], mi: normMI(cols[2]), ministry: cols[3] };
+    if (cols.length === 3) { const n = parseNamePart(cols[0] + ', ' + cols[1]); return { ...n, ministry: cols[2] }; }
+    if (cols.length === 2) return { ...parseNamePart(cols[0] + ', ' + cols[1]), ministry: '' };
+    return { ...parseNamePart(cols[0]), ministry: '' };
+  }
+
+  function isHeader(line) {
+    const l = line.toLowerCase();
+    return (l.includes('last') && l.includes('first')) || (l.includes('name') && l.includes('ministry'));
+  }
+
+  const keyOf = (e) => [e.last, e.first, e.mi].join('|').toLowerCase();
+
+  function addEntrants(list) {
+    const seen = new Set(S.entrants.map(keyOf));
+    let added = 0, dupes = 0, bad = 0;
+    const unknown = [];
+    for (let e of list) {
+      if (!e || !e.last || !e.first) { bad++; continue; }
+      e = { last: up(e.last), first: up(e.first), mi: up(e.mi), ministry: up(e.ministry) };
+      const k = keyOf(e);
+      if (seen.has(k)) { dupes++; continue; }
+      seen.add(k);
+      if (!MINISTRIES.includes(e.ministry)) unknown.push(`${fullName(e)} (${e.ministry || 'blank'})`);
+      S.entrants.push({ id: uid(), last: e.last, first: e.first, mi: e.mi || '', ministry: e.ministry || '' });
+      added++;
+    }
+    save(); renderAll();
+    return { added, dupes, bad, unknown };
+  }
+
+  function addFromText(text) {
+    const lines = text.split('\n');
+    if (lines.length && isHeader(lines[0])) lines.shift();
+    return addEntrants(lines.map(parseLine).filter(Boolean));
+  }
+
+  // ---------- Derived ----------
+  const prizeWins = (pid) => S.winners.filter(w => w.prizeId === pid && !w.absent);
+  const prizeLeft = (p) => Math.max(0, p.qty - prizeWins(p.id).length);
+  // Who can still win a prize:
+  //  - regular prize: everyone who has NOT won anything yet
+  //  - grand prize: everyone, even past winners (except whoever already won this grand prize)
+  //  - people marked absent are left out of every draw (use Undo in Winners to put them back)
+  function pool(prize) {
+    const out = new Set();
+    for (const w of S.winners) {
+      if (w.absent) out.add(w.entrantId);
+      else if (!(prize && prize.grand) || w.prizeId === prize.id) out.add(w.entrantId);
+    }
+    return S.entrants.filter(e => !out.has(e.id));
+  }
+  function currentPrize() {
+    let p = S.prizes.find(p => p.id === S.currentPrizeId);
+    if (!p) { p = S.prizes.find(p => prizeLeft(p) > 0) || S.prizes[0] || null; S.currentPrizeId = p ? p.id : null; }
+    return p;
+  }
+
+  // ---------- Toast ----------
+  let toastT;
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+
+  // ---------- Tabs ----------
+  let tab = 'draw';
+  try { tab = sessionStorage.getItem('raffle-tab') || 'draw'; } catch (e) {}
+  function showTab(name) {
+    if (rolling) return;
+    tab = name;
+    try { sessionStorage.setItem('raffle-tab', name); } catch (e) {}
+    document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === name));
+    document.querySelectorAll('section[id^="tab-"]').forEach(s => s.hidden = s.id !== 'tab-' + name);
+    renderAll();
+  }
+  document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+
+  // ---------- Render ----------
+  function renderCounts() {
+    $('c-prizes').textContent = S.prizes.length || '';
+    $('c-entrants').textContent = S.entrants.length || '';
+    const w = S.winners.filter(w => !w.absent).length;
+    $('c-winners').textContent = w || '';
+  }
+
+  let lastWinner = null; // winner record currently shown on stage
+
+  function renderStage() {
+    $('stage-title').textContent = S.title;
+    const p = currentPrize();
+    const left = p ? prizeLeft(p) : 0;
+    const poolN = pool(p).length;
+    $('kicker').textContent = p && p.grand ? 'Grand prize · everyone can win' : 'Now drawing';
+    $('prize-name').textContent = p ? p.name : 'No prizes yet';
+    $('prize-left').textContent = p
+      ? (left > 0 ? `${p.qty - left + 1} of ${p.qty}` : `All ${p.qty} drawn ✓`)
+      : 'Add prizes in the Prizes tab';
+    const idx = p ? S.prizes.indexOf(p) : -1;
+    $('prev-prize').disabled = idx <= 0;
+    $('next-prize').disabled = idx < 0 || idx >= S.prizes.length - 1;
+    $('prev-prize').style.visibility = S.prizes.length > 1 ? '' : 'hidden';
+    $('next-prize').style.visibility = S.prizes.length > 1 ? '' : 'hidden';
+
+    const prizeDone = !!p && left === 0 && !rolling;
+    const nextPrize = p ? S.prizes[idx + 1] : null;
+    const canDraw = !!p && left > 0 && poolN > 0 && !rolling;
+    $('draw-btn').hidden = prizeDone;
+    $('draw-btn').disabled = !canDraw;
+    $('draw-btn').textContent = lastWinner && left > 0 ? 'Draw next' : 'Draw';
+    $('nextprize-btn').hidden = !(prizeDone && nextPrize);
+    $('redraw-btn').hidden = prizeDone || !(lastWinner && !rolling && lastWinner.prizeId === (p && p.id) && !lastWinner.absent);
+
+    let foot;
+    if (prizeDone) {
+      foot = nextPrize ? '' : 'All prizes have been drawn — congratulations to all the winners!';
+    } else if (!S.entrants.length) foot = 'Add names in the Names tab';
+    else if (!poolN) foot = 'Everyone has already won';
+    else foot = `${poolN} name${poolN === 1 ? '' : 's'} in the draw &nbsp;·&nbsp; <span class="kbd">Space</span> to draw`;
+    $('stage-foot').innerHTML = foot;
+
+    if (!rolling && !lastWinner) {
+      $('reveal').className = 'reveal';
+      $('placeholder').hidden = false;
+      $('winner-name').hidden = true;
+      $('winner-ministry').hidden = true;
+    }
+
+    const wins = p ? S.winners.filter(w => w.prizeId === p.id) : [];
+    $('recent').innerHTML = wins.length
+      ? `<h3>Winners of this prize</h3><ol>${wins.map(w =>
+          `<li class="${w.absent ? 'forfeit' : ''}">${esc(displayLine(w.name, w.ministry))}</li>`).join('')}</ol>`
+      : '';
+  }
+
+  function renderPrizes() {
+    if (!S.prizes.length) { $('prize-table').innerHTML = '<div class="empty">No prizes yet. Add the first one above.</div>'; return; }
+    $('prize-table').innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th class="num">#</th><th>Prize</th><th class="num">Winners</th><th>Grand prize</th><th>Status</th><th></th></tr></thead>
+      <tbody>${S.prizes.map((p, i) => {
+        const done = p.qty - prizeLeft(p);
+        const status = done === 0 ? '<span class="pill">Not drawn</span>'
+          : done >= p.qty ? '<span class="pill done">Done</span>'
+          : `<span class="pill warm">${done} of ${p.qty} drawn</span>`;
+        return `<tr>
+          <td class="num">${i + 1}</td>
+          <td><input type="text" value="${esc(p.name)}" data-pname="${p.id}" aria-label="Prize name" /></td>
+          <td class="num"><input type="number" min="${Math.max(1, done)}" value="${p.qty}" data-pqty="${p.id}" style="width:80px" aria-label="Number of winners" /></td>
+          <td><label class="check"><input type="checkbox" data-pgrand="${p.id}" ${p.grand ? 'checked' : ''} aria-label="Grand prize" />${p.grand ? '<span class="pill grand">Everyone can win</span>' : ''}</label></td>
+          <td>${status}</td>
+          <td class="actions">
+            <button class="btn ghost small" data-pup="${p.id}" ${i === 0 ? 'disabled' : ''} title="Move up">↑</button>
+            <button class="btn ghost small" data-pdown="${p.id}" ${i === S.prizes.length - 1 ? 'disabled' : ''} title="Move down">↓</button>
+            <button class="btn danger small" data-pdel="${p.id}">Remove</button>
+          </td></tr>`;
+      }).join('')}</tbody></table></div>`;
+  }
+
+  function renderEntrants() {
+    const q = $('e-search').value.trim().toLowerCase();
+    const wonIds = new Set(S.winners.filter(w => !w.absent).map(w => w.entrantId));
+    const absentIds = new Set(S.winners.filter(w => w.absent).map(w => w.entrantId));
+    const list = S.entrants
+      .filter(e => !q || displayLine(fullName(e), e.ministry).toLowerCase().includes(q))
+      .sort((a, b) => a.last.localeCompare(b.last) || a.first.localeCompare(b.first));
+    if (!S.entrants.length) { $('entrant-table').innerHTML = '<div class="empty">No names yet. Add one, paste a list, or load sample data from Settings.</div>'; return; }
+    $('entrant-table').innerHTML = `<p class="hint" style="margin-top:8px">${S.entrants.length} total · ${pool().length} have not won yet</p>
+      <div class="table-wrap"><table>
+      <thead><tr><th>Name</th><th>Ministry</th><th>Status</th><th></th></tr></thead>
+      <tbody>${list.map(e => `<tr>
+        <td>${esc(fullName(e))}</td><td>${esc(e.ministry)}</td>
+        <td>${wonIds.has(e.id) ? '<span class="pill done">Won</span>' : absentIds.has(e.id) ? '<span class="pill warm">Absent</span>' : ''}</td>
+        <td class="actions"><button class="btn danger small" data-edel="${e.id}">Remove</button></td>
+      </tr>`).join('')}</tbody></table></div>`;
+  }
+
+  function renderWinners() {
+    if (!S.winners.length) { $('winner-table').innerHTML = '<div class="empty">No winners yet.</div>'; return; }
+    const order = new Map(S.prizes.map((p, i) => [p.id, i]));
+    const list = [...S.winners].sort((a, b) => (order.get(a.prizeId) ?? 999) - (order.get(b.prizeId) ?? 999) || a.at - b.at);
+    $('winner-table').innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>Prize</th><th>Winner</th><th>Time</th><th></th></tr></thead>
+      <tbody>${list.map(w => `<tr style="${w.absent ? 'opacity:.55' : ''}">
+        <td><b>${esc(w.prizeName)}</b></td>
+        <td>${w.absent ? '<s>' : ''}${esc(displayLine(w.name, w.ministry))}${w.absent ? '</s> <span class="pill warm">Absent</span>' : ''}</td>
+        <td>${new Date(w.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</td>
+        <td class="actions"><button class="btn ghost small" data-wundo="${w.id}">Undo</button></td>
+      </tr>`).join('')}</tbody></table></div>`;
+  }
+
+  function renderSettings() {
+    $('s-title').value = S.title;
+    $('s-roll').value = String(S.rollMs);
+  }
+
+  function renderAll() {
+    renderCounts();
+    if (tab === 'draw') renderStage();
+    if (tab === 'prizes') renderPrizes();
+    if (tab === 'entrants') renderEntrants();
+    if (tab === 'winners') renderWinners();
+    if (tab === 'settings') renderSettings();
+  }
+
+  // ---------- Drawing ----------
+  let rolling = false;
+
+  function draw() {
+    const p = currentPrize();
+    const candidates = pool(p);
+    if (rolling || !p || prizeLeft(p) <= 0 || !candidates.length) return;
+
+    // Winner is chosen up front with the fair RNG; the rolling names are just for show.
+    const winner = candidates[randInt(candidates.length)];
+    rolling = true;
+    lastWinner = null;
+    stopConfetti();
+
+    const box = $('reveal'), nameEl = $('winner-name'), minEl = $('winner-ministry');
+    box.className = 'reveal rolling';
+    $('placeholder').hidden = true;
+    nameEl.hidden = false; minEl.hidden = false;
+    renderStage();
+
+    const total = S.rollMs;
+    const start = performance.now();
+    let lastSwap = 0;
+    const showcase = candidates; // only names that can actually win roll past
+
+    function frame(now) {
+      const t = (now - start) / total;
+      if (t < 1) {
+        const gap = 50 + 380 * t * t * t; // slow down near the end
+        if (now - lastSwap > gap) {
+          const e = showcase[randInt(showcase.length)];
+          nameEl.textContent = fullName(e);
+          minEl.textContent = e.ministry || ' ';
+          lastSwap = now;
+        }
+        requestAnimationFrame(frame);
+      } else finish();
+    }
+
+    function finish() {
+      const rec = {
+        id: uid(), prizeId: p.id, prizeName: p.name, entrantId: winner.id,
+        name: fullName(winner), ministry: winner.ministry, at: Date.now(), absent: false,
+      };
+      S.winners.push(rec);
+      save();
+      lastWinner = rec;
+      rolling = false;
+      nameEl.textContent = rec.name;
+      minEl.textContent = rec.ministry ? rec.ministry : ' ';
+      void box.offsetWidth; // restart pop animation
+      box.className = 'reveal won';
+      startConfetti();
+      renderCounts();
+      renderStage();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function markAbsentAndRedraw() {
+    if (!lastWinner || rolling) return;
+    lastWinner.absent = true;
+    save();
+    toast(`${lastWinner.name} marked absent`);
+    lastWinner = null;
+    draw();
+  }
+
+  function movePrize(delta) {
+    if (rolling || S.prizes.length < 2) return;
+    const p = currentPrize();
+    const i = S.prizes.indexOf(p) + delta;
+    if (i < 0 || i >= S.prizes.length) return;
+    S.currentPrizeId = S.prizes[i].id;
+    lastWinner = null; stopConfetti();
+    save(); renderStage();
+  }
+
+  $('draw-btn').addEventListener('click', draw);
+  $('redraw-btn').addEventListener('click', markAbsentAndRedraw);
+  $('prev-prize').addEventListener('click', () => movePrize(-1));
+  $('next-prize').addEventListener('click', () => movePrize(1));
+  $('nextprize-btn').addEventListener('click', () => movePrize(1));
+  $('fs-btn').addEventListener('click', toggleFullscreen);
+
+  function toggleFullscreen() {
+    const st = $('stage');
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (st.requestFullscreen) st.requestFullscreen().catch(() => {});
+  }
+  document.addEventListener('fullscreenchange', () => {
+    $('fs-btn').textContent = document.fullscreenElement ? '✕ Exit full screen' : '⛶ Full screen';
+    resizeConfetti();
+  });
+
+  document.addEventListener('keydown', (ev) => {
+    if (tab !== 'draw') return;
+    if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+    if (ev.code === 'Space' || ev.code === 'Enter') {
+      ev.preventDefault();
+      if (!$('nextprize-btn').hidden) movePrize(1); else draw();
+    }
+    else if (ev.code === 'ArrowRight') movePrize(1);
+    else if (ev.code === 'ArrowLeft') movePrize(-1);
+    else if (ev.key === 'f' || ev.key === 'F') toggleFullscreen();
+  });
+
+  // ---------- Confetti ----------
+  const cv = $('confetti'), cx = cv.getContext('2d');
+  let parts = [], confettiRaf = null;
+  function resizeConfetti() { const r = $('stage').getBoundingClientRect(); cv.width = r.width; cv.height = r.height; }
+  window.addEventListener('resize', resizeConfetti);
+  function startConfetti() {
+    resizeConfetti();
+    const colors = ['#f5c542', '#17a5b8', '#ffffff', '#7fd8e4', '#ff8a5c'];
+    parts = Array.from({ length: 180 }, () => ({
+      x: cv.width / 2 + (Math.random() - .5) * cv.width * .5,
+      y: cv.height * .45,
+      vx: (Math.random() - .5) * 14, vy: -Math.random() * 14 - 4,
+      r: Math.random() * 6 + 4, c: colors[(Math.random() * colors.length) | 0],
+      a: Math.random() * Math.PI, va: (Math.random() - .5) * .3,
+    }));
+    cancelAnimationFrame(confettiRaf);
+    const tick = () => {
+      cx.clearRect(0, 0, cv.width, cv.height);
+      parts.forEach(p => {
+        p.vy += .28; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.a += p.va;
+        cx.save(); cx.translate(p.x, p.y); cx.rotate(p.a); cx.fillStyle = p.c;
+        cx.fillRect(-p.r / 2, -p.r / 4, p.r, p.r / 2); cx.restore();
+      });
+      parts = parts.filter(p => p.y < cv.height + 20);
+      if (parts.length) confettiRaf = requestAnimationFrame(tick);
+    };
+    tick();
+  }
+  function stopConfetti() { cancelAnimationFrame(confettiRaf); parts = []; cx.clearRect(0, 0, cv.width, cv.height); }
+
+  // ---------- Prizes events ----------
+  $('prize-form').addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const name = cap($('p-name').value);
+    const qty = Math.max(1, parseInt($('p-qty').value, 10) || 1);
+    if (!name) return;
+    S.prizes.push({ id: uid(), name, qty, grand: $('p-grand').checked });
+    save();
+    $('p-name').value = ''; $('p-qty').value = 1; $('p-grand').checked = false; $('p-name').focus();
+    renderAll();
+  });
+  $('prize-table').addEventListener('change', (ev) => {
+    const t = ev.target;
+    if (t.dataset.pname) {
+      const p = S.prizes.find(p => p.id === t.dataset.pname);
+      const v = cap(t.value);
+      if (p && v) { p.name = v; S.winners.forEach(w => { if (w.prizeId === p.id) w.prizeName = v; }); }
+    }
+    if (t.dataset.pqty) {
+      const p = S.prizes.find(p => p.id === t.dataset.pqty);
+      const done = p.qty - prizeLeft(p);
+      if (p) p.qty = Math.max(1, done, parseInt(t.value, 10) || 1);
+    }
+    if (t.dataset.pgrand) {
+      const p = S.prizes.find(p => p.id === t.dataset.pgrand);
+      if (p) p.grand = t.checked;
+    }
+    save(); renderAll();
+  });
+  $('prize-table').addEventListener('click', (ev) => {
+    const b = ev.target.closest('button'); if (!b) return;
+    const id = b.dataset.pup || b.dataset.pdown || b.dataset.pdel;
+    const i = S.prizes.findIndex(p => p.id === id);
+    if (i < 0) return;
+    if (b.dataset.pup && i > 0) [S.prizes[i - 1], S.prizes[i]] = [S.prizes[i], S.prizes[i - 1]];
+    if (b.dataset.pdown && i < S.prizes.length - 1) [S.prizes[i + 1], S.prizes[i]] = [S.prizes[i], S.prizes[i + 1]];
+    if (b.dataset.pdel) {
+      const n = S.winners.filter(w => w.prizeId === id).length;
+      if (n && !confirm(`"${S.prizes[i].name}" already has ${n} winner(s). Remove the prize and its winners?`)) return;
+      S.winners = S.winners.filter(w => w.prizeId !== id);
+      S.prizes.splice(i, 1);
+    }
+    save(); renderAll();
+  });
+
+  // ---------- Entrants events ----------
+  $('entrant-form').addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const r = addEntrants([{ last: cap($('e-last').value), first: cap($('e-first').value), mi: normMI($('e-mi').value), ministry: cap($('e-min').value) }]);
+    if (r.dupes) toast('That name is already in the list');
+    else { ['e-last', 'e-first', 'e-mi', 'e-min'].forEach(id => $(id).value = ''); $('e-last').focus(); toast('Added'); }
+  });
+  function reportBulk(r) {
+    const bits = [`${r.added} added`];
+    if (r.dupes) bits.push(`${r.dupes} already in the list`);
+    if (r.bad) bits.push(`${r.bad} skipped (missing first or last name)`);
+    if (r.unknown.length) bits.push(`check ministry for: ${r.unknown.join('; ')}`);
+    $('bulk-msg').textContent = bits.join(' · ');
+  }
+  $('bulk-add').addEventListener('click', () => {
+    const r = addFromText($('bulk').value);
+    reportBulk(r);
+    if (r.added) $('bulk').value = '';
+  });
+  $('csv-file').addEventListener('change', async (ev) => {
+    const f = ev.target.files[0]; if (!f) return;
+    reportBulk(addFromText(await f.text()));
+    ev.target.value = '';
+  });
+  $('e-search').addEventListener('input', renderEntrants);
+  $('entrant-table').addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-edel]'); if (!b) return;
+    const id = b.dataset.edel;
+    if (S.winners.some(w => w.entrantId === id) && !confirm('This person is on the winners list. Remove them and their win?')) return;
+    S.entrants = S.entrants.filter(e => e.id !== id);
+    S.winners = S.winners.filter(w => w.entrantId !== id);
+    save(); renderAll();
+  });
+  $('clear-entrants').addEventListener('click', () => {
+    if (!S.entrants.length || !confirm(`Remove all ${S.entrants.length} names? Winners will be cleared too.`)) return;
+    S.entrants = []; S.winners = []; lastWinner = null;
+    save(); renderAll();
+  });
+
+  // ---------- Winners events ----------
+  $('winner-table').addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-wundo]'); if (!b) return;
+    const w = S.winners.find(w => w.id === b.dataset.wundo);
+    if (!w || !confirm(`Undo "${w.name}" for ${w.prizeName}? They go back into the draw.`)) return;
+    S.winners = S.winners.filter(x => x !== w);
+    if (lastWinner && lastWinner.id === w.id) lastWinner = null;
+    save(); renderAll();
+  });
+  function winnerRows() {
+    const order = new Map(S.prizes.map((p, i) => [p.id, i]));
+    return S.winners.filter(w => !w.absent)
+      .sort((a, b) => (order.get(a.prizeId) ?? 999) - (order.get(b.prizeId) ?? 999) || a.at - b.at);
+  }
+  $('copy-winners').addEventListener('click', async () => {
+    const groups = [];
+    for (const w of winnerRows()) {
+      let g = groups.find(g => g.id === w.prizeId);
+      if (!g) groups.push(g = { id: w.prizeId, name: w.prizeName, lines: [] });
+      g.lines.push(displayLine(w.name, w.ministry));
+    }
+    const text = groups.map(g => `${g.name}\n${g.lines.join('\n')}`).join('\n\n');
+    try { await navigator.clipboard.writeText(text); toast('Winners copied'); }
+    catch (e) { toast('Copy not allowed here — use Download CSV'); }
+  });
+  function download(name, text, type) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type }));
+    a.download = name; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+  const csvCell = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
+  $('export-winners').addEventListener('click', () => {
+    const rows = [['Prize', 'Last name', 'First name', 'M.I.', 'Ministry', 'Time']];
+    for (const w of winnerRows()) {
+      const e = S.entrants.find(e => e.id === w.entrantId) || parseNamePart(w.name);
+      rows.push([w.prizeName, e.last, e.first, e.mi, w.ministry, new Date(w.at).toLocaleString()]);
+    }
+    download('raffle-winners.csv', '﻿' + rows.map(r => r.map(csvCell).join(',')).join('\r\n'), 'text/csv');
+  });
+  $('clear-winners').addEventListener('click', () => {
+    if (!S.winners.length || !confirm('Clear all winners? Everyone goes back into the draw.')) return;
+    S.winners = []; lastWinner = null;
+    save(); renderAll();
+  });
+
+  // ---------- Settings events ----------
+  $('s-title').addEventListener('input', (ev) => { S.title = ev.target.value; save(); });
+  $('s-roll').addEventListener('change', (ev) => { S.rollMs = parseInt(ev.target.value, 10); save(); });
+  $('backup').addEventListener('click', () => {
+    const stamp = new Date().toISOString().slice(0, 10);
+    download(`raffle-backup-${stamp}.json`, JSON.stringify(S, null, 2), 'application/json');
+  });
+  $('restore').addEventListener('change', async (ev) => {
+    const f = ev.target.files[0]; if (!f) return;
+    try {
+      const data = JSON.parse(await f.text());
+      if (!Array.isArray(data.entrants) || !Array.isArray(data.prizes)) throw new Error();
+      S = Object.assign(defaults(), data); lastWinner = null;
+      save(); renderAll(); toast('Backup restored');
+    } catch (e) { toast('That file is not a raffle backup'); }
+    ev.target.value = '';
+  });
+  $('reset-all').addEventListener('click', () => {
+    if (!confirm('Erase all prizes, names and winners on this computer? This cannot be undone.')) return;
+    S = defaults(); lastWinner = null; stopConfetti();
+    save(); renderAll(); toast('Everything erased');
+  });
+  $('sample').addEventListener('click', () => {
+    if ((S.entrants.length || S.prizes.length) && !confirm('Add sample prizes and made-up names to what you already have?')) return;
+    const lasts = ['Dela Cruz', 'Santos', 'Reyes', 'Garcia', 'Mendoza', 'Bautista', 'Villanueva', 'Ramos', 'Aquino', 'Castillo', 'Flores', 'Navarro', 'Torres', 'Gonzales', 'Domingo'];
+    const firsts = ['Juan', 'Maria', 'Jose', 'Ana', 'Mark', 'Grace', 'Paolo', 'Joy', 'Carlo', 'Faith', 'Miguel', 'Hope', 'Rafael', 'Joanna', 'Daniel', 'Ruth'];
+    const mins = MINISTRIES;
+    const list = [];
+    for (let i = 0; i < 40; i++) list.push({
+      last: lasts[randInt(lasts.length)], first: firsts[randInt(firsts.length)],
+      mi: String.fromCharCode(65 + randInt(26)) + '.', ministry: mins[randInt(mins.length)],
+    });
+    if (!S.prizes.length) S.prizes.push(
+      { id: uid(), name: '1 sack of rice', qty: 3 },
+      { id: uid(), name: 'Grocery package', qty: 5 },
+      { id: uid(), name: 'Electric fan', qty: 2 },
+      { id: uid(), name: 'Smart TV', qty: 1, grand: true },
+    );
+    const r = addEntrants(list);
+    toast(`Sample loaded: ${r.added} made-up names`);
+  });
+
+  showTab(tab);
+})();
+</script>
+</body>
+</html>
