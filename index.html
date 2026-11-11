@@ -171,12 +171,67 @@
 
   #confetti { position: absolute; inset: 0; pointer-events: none; width: 100%; height: 100%; }
 
+  .search { max-width: 220px; }
+  .m-only { display: none; }
+
+  /* ---------- Phones ---------- */
   @media (max-width: 640px) {
-    .topbar { padding: 10px 16px; }
-    .page { padding: 16px 16px 48px; }
-    .tabs { margin-left: 0; }
-    .draw-btn { padding: 14px 32px; }
+    /* Tabs: one row that fits the screen; the draw screen already shows the logo */
+    .topbar { padding: 8px 8px; gap: 0; }
+    .brand { display: none; }
+    .tabs { margin: 0; width: 100%; flex-wrap: nowrap; overflow-x: auto; gap: 2px; justify-content: space-between; scrollbar-width: none; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { flex: none; padding: 7px 9px; font-size: 13px; }
+    .tab .count { margin-left: 1px; font-size: 12px; }
+
+    .page { padding: 12px 12px 48px; }
+    .card { padding: 16px; }
+    textarea, input[type=text], input[type=number], select { font-size: 16px; } /* stops iPhone zooming in */
+    .search { max-width: none; flex: 1 1 100%; order: 3; }
+
+    /* Draw screen */
+    #stage { min-height: calc(100vh - 52px); min-height: calc(100dvh - 52px); padding: 14px 14px 24px; }
+    .stage-head { gap: 10px; }
+    .stage-head img { width: 36px; height: 36px; }
+    .stage-title { font-size: 16px; line-height: 1.2; }
+    #fs-btn { font-size: 0; padding: 6px 10px; }
+    #fs-btn::before { content: '⛶'; font-size: 18px; }
+    .prize-picker { margin-top: 24px; gap: 8px; width: 100%; justify-content: space-between; }
+    .prize-picker .icon-btn { padding: 4px 12px; flex: none; }
+    .prize-label { min-width: 0; flex: 1; }
+    .prize-label .kicker { font-size: 12px; letter-spacing: .12em; }
+    .prize-name { font-size: 28px; word-break: break-word; }
+    .reveal { margin-top: 20px; min-height: 170px; padding: 20px 14px; border-radius: 20px; }
+    .winner-name { font-size: 30px; }
+    .winner-ministry { font-size: 18px; margin-top: 8px; }
+    .reveal .placeholder { font-size: 18px; }
+    .stage-actions { margin-top: 20px; width: 100%; flex-direction: column; align-items: stretch; }
+    .draw-btn { padding: 14px 24px; font-size: 22px; }
+    .recent { margin-top: 18px; }
+    .recent li { font-size: 14px; }
+
+    /* Tables become stacked cards */
+    .table-wrap { max-height: none; overflow: visible; }
+    .table-wrap table, .table-wrap tbody { display: block; }
+    .table-wrap thead { display: none; }
+    .table-wrap tr { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+    .table-wrap td { display: block; border: 0; padding: 0; width: auto !important; text-align: left; }
+    .table-wrap td.actions { margin-left: auto; }
+    .table-wrap td[data-label] { display: flex; align-items: center; gap: 8px; }
+    .table-wrap td[data-label]::before { content: attr(data-label); font-size: 13px; font-weight: 700; color: var(--muted); }
+    .m-full { flex: 1 1 100%; }
+    .m-strong { font-weight: 700; }
+    .m-muted { color: var(--muted); font-size: 14px; }
+    .m-hide { display: none !important; }
+    .m-only { display: inline; }
   }
+  /* Small phones: drop the counts so all five tabs still fit */
+  @media (max-width: 360px) {
+    .tab { padding: 7px 6px; }
+    .tab .count { display: none; }
+  }
+  /* Phones and tablets have no keyboard: hide the "Space to draw" tip */
+  @media (hover: none) { .kbd-tip { display: none; } }
 </style>
 </head>
 <body>
@@ -297,7 +352,7 @@
     <div class="toolbar" style="margin-top:0">
       <h2 style="margin:0">Names in the raffle</h2>
       <span class="spacer"></span>
-      <input type="text" id="e-search" placeholder="Search…" style="max-width:220px" />
+      <input type="text" id="e-search" class="search" placeholder="Search…" />
       <button class="btn danger small" id="clear-entrants">Remove all</button>
     </div>
     <div id="entrant-table"></div>
@@ -571,7 +626,7 @@
       foot = nextPrize ? '' : 'All prizes have been drawn — congratulations to all the winners!';
     } else if (!S.entrants.length) foot = 'Add names in the Names tab';
     else if (!poolN) foot = 'Everyone has already won';
-    else foot = `${poolN} name${poolN === 1 ? '' : 's'} in the draw &nbsp;·&nbsp; <span class="kbd">Space</span> to draw`;
+    else foot = `${poolN} name${poolN === 1 ? '' : 's'} in the draw<span class="kbd-tip"> &nbsp;·&nbsp; <span class="kbd">Space</span> to draw</span>`;
     $('stage-foot').innerHTML = foot;
 
     if (!rolling && !lastWinner) {
@@ -598,10 +653,10 @@
           : done >= p.qty ? '<span class="pill done">Done</span>'
           : `<span class="pill warm">${done} of ${p.qty} drawn</span>`;
         return `<tr>
-          <td class="num">${i + 1}</td>
-          <td><input type="text" value="${esc(p.name)}" data-pname="${p.id}" aria-label="Prize name" /></td>
-          <td class="num"><input type="number" min="${Math.max(1, done)}" value="${p.qty}" data-pqty="${p.id}" style="width:80px" aria-label="Number of winners" /></td>
-          <td><label class="check"><input type="checkbox" data-pgrand="${p.id}" ${p.grand ? 'checked' : ''} aria-label="Grand prize" />${p.grand ? '<span class="pill grand">Everyone can win</span>' : ''}</label></td>
+          <td class="num m-hide">${i + 1}</td>
+          <td class="m-full"><input type="text" value="${esc(p.name)}" data-pname="${p.id}" aria-label="Prize name" /></td>
+          <td class="num" data-label="Winners"><input type="number" min="${Math.max(1, done)}" value="${p.qty}" data-pqty="${p.id}" style="width:80px" aria-label="Number of winners" /></td>
+          <td><label class="check"><input type="checkbox" data-pgrand="${p.id}" ${p.grand ? 'checked' : ''} aria-label="Grand prize" /><span class="m-only">Grand prize</span>${p.grand ? '<span class="pill grand">Everyone can win</span>' : ''}</label></td>
           <td>${status}</td>
           <td class="actions">
             <button class="btn ghost small" data-pup="${p.id}" ${i === 0 ? 'disabled' : ''} title="Move up">↑</button>
@@ -623,7 +678,7 @@
       <div class="table-wrap"><table>
       <thead><tr><th>Name</th><th>Ministry</th><th>Status</th><th></th></tr></thead>
       <tbody>${list.map(e => `<tr>
-        <td>${esc(fullName(e))}</td><td>${esc(e.ministry)}</td>
+        <td class="m-full m-strong">${esc(fullName(e))}</td><td class="m-muted">${esc(e.ministry)}</td>
         <td>${wonIds.has(e.id) ? '<span class="pill done">Won</span>' : absentIds.has(e.id) ? '<span class="pill warm">Absent</span>' : ''}</td>
         <td class="actions"><button class="btn danger small" data-edel="${e.id}">Remove</button></td>
       </tr>`).join('')}</tbody></table></div>`;
@@ -636,9 +691,9 @@
     $('winner-table').innerHTML = `<div class="table-wrap"><table>
       <thead><tr><th>Prize</th><th>Winner</th><th>Time</th><th></th></tr></thead>
       <tbody>${list.map(w => `<tr style="${w.absent ? 'opacity:.55' : ''}">
-        <td><b>${esc(w.prizeName)}</b></td>
-        <td>${w.absent ? '<s>' : ''}${esc(displayLine(w.name, w.ministry))}${w.absent ? '</s> <span class="pill warm">Absent</span>' : ''}</td>
-        <td>${new Date(w.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</td>
+        <td class="m-full"><b>${esc(w.prizeName)}</b></td>
+        <td class="m-full">${w.absent ? '<s>' : ''}${esc(displayLine(w.name, w.ministry))}${w.absent ? '</s> <span class="pill warm">Absent</span>' : ''}</td>
+        <td class="m-muted">${new Date(w.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</td>
         <td class="actions"><button class="btn ghost small" data-wundo="${w.id}">Undo</button></td>
       </tr>`).join('')}</tbody></table></div>`;
   }
