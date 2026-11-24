@@ -1321,10 +1321,12 @@
     else if (!cloud.base) merged = merge3(EMPTY, mine, theirs, true);  // first time on this device: keep both
     else if (sameJSON(mine, cloud.base)) merged = theirs;              // nothing changed here
     else merged = merge3(cloud.base, mine, theirs, false);
-    cloud = { version, base: theirs || null };
+    // Separate copies: the raffle on screen must never share lists with the saved copy,
+    // or an edit here would silently change the saved copy too and never be sent.
+    cloud = { version, base: theirs ? sharedOf(theirs) : null };
     keepCloud();
     if (!sameJSON(merged, mine)) {
-      Object.assign(S, merged);
+      Object.assign(S, sharedOf(merged));
       tidyShared();
       upperAll();
       try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
