@@ -192,6 +192,10 @@
   .lock-card form { display: flex; gap: 8px; margin-top: 20px; }
   .lock-card input[type=password] { flex: 1; min-width: 0; font-size: 22px; text-align: center; letter-spacing: .25em; border: 1px solid #d5d7e3; border-radius: 12px; padding: 10px; }
   .lock-card .err { color: var(--error); font-weight: 700; margin-top: 12px; min-height: 1.4em; }
+  .cloud-chip { font-size: 13px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+  .cloud-chip.ok { color: #17663a; }
+  .cloud-chip.bad { color: var(--error); }
+  @media (max-width: 640px) { .cloud-chip { display: none; } }
   .pill.live { background: #e7f6ec; color: #17663a; }
   .pill.off { background: var(--ground); color: var(--muted); }
   .pill.bad { background: #fdecea; color: var(--error); }
@@ -263,6 +267,7 @@
 
 <header class="topbar">
   <div class="brand"><img src="ccf-logo.png" alt="" /> <span>Raffle Draw</span></div>
+  <span class="cloud-chip" id="cloud-chip" hidden></span>
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" data-tab="draw">Draw</button>
     <button class="tab" role="tab" data-tab="prizes">Prizes <span class="count" id="c-prizes"></span></button>
@@ -439,7 +444,7 @@
   </div>
   <div class="card stack">
     <h2>Backup &amp; testing</h2>
-    <p class="hint">Everything is saved in this browser on this computer only. Download a backup before the event in case the browser data is cleared.</p>
+    <p class="hint" id="cloud-status">Everything is saved in this browser on this computer only. Download a backup before the event in case the browser data is cleared.</p>
     <div class="toolbar">
       <button class="btn ghost" id="backup">Download backup</button>
       <label class="btn ghost" style="cursor:pointer">Restore backup<input type="file" id="restore" accept=".json" hidden /></label>
@@ -502,7 +507,7 @@
   }
   upperAll();
 
-  const save = () => { upperAll(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+  const save = () => { upperAll(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} onSaved(); };
 
   // Convert text to uppercase as it is typed or pasted into any field
   document.addEventListener('input', (ev) => {
@@ -1062,7 +1067,9 @@
     ev.target.value = '';
   });
   $('reset-all').addEventListener('click', () => {
-    if (!confirm('Erase all prizes, names and winners on this computer? This cannot be undone.')) return;
+    if (!confirm(CLOUD_READY
+      ? 'Erase all prizes, names and winners on EVERY device that uses this raffle? This cannot be undone.'
+      : 'Erase all prizes, names and winners on this computer? This cannot be undone.')) return;
     S = defaults(); lastWinner = null; stopConfetti();
     save(); renderAll(); toast('Everything erased');
   });
@@ -1099,6 +1106,7 @@
   const isOnline = (base) => /^https:\/\/script\.google(usercontent)?\.com\//.test(base);
   const attendeesUrl = () => `${syncBase()}/api/attendees`; // check-in program on a laptop (no PIN)
 
+  var CLOUD_READY = false; // online sharing is running (see "Shared raffle" below)
   // ---- PIN screen (online raffle only). The online check-in only gives out names with the staff PIN.
   const NEEDS_PIN = !servedByCheckin && !!ONLINE_CHECKIN;
   const PIN_KEY = 'ccf-raffle-pin';
@@ -1107,6 +1115,7 @@
   const isLocked = () => document.documentElement.classList.contains('locked');
   function lockRaffle(message) {
     pin = '';
+    CLOUD_READY = false;
     try { localStorage.removeItem(PIN_KEY); } catch (e) {}
     stopConfetti();
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
@@ -1115,13 +1124,13 @@
     $('lock-pin').value = '';
     $('lock-pin').focus();
   }
-  // Ask the online check-in for the names, with the PIN. Returns the list, or throws (e.needPin when the PIN is wrong).
-  async function fetchOnline(base, withPin) {
-    const res = await fetch(base, { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'attendees', pin: withPin }) });
+  // Talk to the online check-in / raffle (Google Sheet script). Throws e.needPin when the PIN is wrong.
+  async function post(body, withPin) {
+    const res = await fetch(ONLINE_CHECKIN, { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ ...body, pin: withPin === undefined ? pin : withPin }) });
     const data = await res.json();
     if (data.needPin) throw Object.assign(new Error('Wrong PIN'), { needPin: true });
-    if (!res.ok || !Array.isArray(data.attendees)) throw new Error('Bad answer');
-    return data.attendees;
+    if (!res.ok || data.error) throw new Error(data.error || 'Bad answer');
+    return data;
   }
   $('lock-form').addEventListener('submit', async (ev) => {
     ev.preventDefault();
@@ -1129,11 +1138,11 @@
     if (!tryPin) return;
     $('lock-go').disabled = true; $('lock-go').textContent = 'Checking…'; $('lock-err').textContent = '';
     try {
-      const list = await fetchOnline(ONLINE_CHECKIN, tryPin);
+      const r = await post({ action: 'raffle', have: cloud.version }, tryPin);
       pin = tryPin;
       try { localStorage.setItem(PIN_KEY, pin); } catch (e) {}
       document.documentElement.classList.remove('locked');
-      if (S.sync.on && isOnline(syncBase())) { applyAttendees(list); syncInfo = { ok: true, at: Date.now(), count: list.length }; }
+      startCloud(r);
       renderAll(); renderSync();
     } catch (e) {
       $('lock-err').textContent = e.needPin ? 'Wrong PIN — try again.' : 'Can’t check the PIN right now — check the internet and try again.';
@@ -1163,7 +1172,7 @@
       if (!e.last && !e.first) continue;
       const same = typedIn.get(keyOf(e));
       if (same) { same.src = a.id; same.kind = a.type; same.keep = true; changed = true; continue; } // already typed in here
-      S.entrants.push({ id: uid(), ...e, src: a.id, kind: a.type });
+      S.entrants.push({ id: 'ci:' + a.id, ...e, src: a.id, kind: a.type });
       added++;
     }
     // Check-ins undone at the lobby leave the raffle too — unless they already won or were typed in here
@@ -1175,24 +1184,21 @@
     });
     S.syncIgnore = S.syncIgnore.filter(id => ids.has(id));
     if (added || removed || changed) {
-      save(); renderAll();
+      save(); safeRender();
       if (added && tab !== 'draw') toast(`${added} new name${added === 1 ? '' : 's'} from check-in`);
     }
     return true;
   }
 
+  // Check-in program on a laptop (start.bat). The online check-in comes in through cloudTick below.
   async function syncNow() {
-    if (!S.sync.on || syncBusy || isLocked()) return;
+    if (!S.sync.on || syncBusy || isLocked() || isOnline(syncBase())) return;
     syncBusy = true;
     try {
-      let list;
-      if (isOnline(syncBase())) list = await fetchOnline(syncBase(), pin);
-      else {
-        const res = await fetch(attendeesUrl(), { cache: 'no-store' });
-        if (!res.ok) throw new Error();
-        list = (await res.json()).attendees;
-        if (!Array.isArray(list)) throw new Error();
-      }
+      const res = await fetch(attendeesUrl(), { cache: 'no-store' });
+      if (!res.ok) throw new Error();
+      const list = (await res.json()).attendees;
+      if (!Array.isArray(list)) throw new Error();
       applyAttendees(list);
       syncInfo = { ok: true, at: Date.now(), count: list.length };
     } catch (e) {
@@ -1228,7 +1234,7 @@
 
   $('sync-on').addEventListener('change', (ev) => {
     S.sync.on = ev.target.checked; syncInfo = { ok: null, at: 0, count: 0 };
-    save(); renderSync(); syncNow();
+    save(); renderSync(); syncNow(); cloudTick();
   });
   $('sync-form').addEventListener('submit', (ev) => {
     ev.preventDefault();
@@ -1236,6 +1242,174 @@
     syncInfo = { ok: null, at: 0, count: 0 };
     save(); renderSync(); syncNow(); toast('Check-in address saved');
   });
+  // ---------- Shared raffle (online) ----------
+  // Prizes, names and winners are saved in the RSVP spreadsheet ("Raffle data" tab), so every device
+  // that opens this raffle with the staff PIN sees the same thing. Which prize is on screen and the
+  // Live check-in setting stay per device. If two devices change something at the same time, both
+  // changes are kept (added, edited and removed items are merged by id).
+  var CLOUD = NEEDS_PIN;
+  var CLOUD_KEY = 'ccf-raffle-cloud';
+  var cloud = { version: -1, base: null };          // the last copy we know is saved online
+  try { const c = JSON.parse(localStorage.getItem(CLOUD_KEY) || 'null'); if (c && typeof c.version === 'number') cloud = c; } catch (e) {}
+  var cloudBusy = false, cloudTimer = null, cloudInfo = { ok: null, at: 0 };
+  var pendingRender = false;
+  const EMPTY = { title: '', rollMs: 0, prizes: [], entrants: [], winners: [], syncIgnore: [] };
+  const sharedOf = (x) => JSON.parse(JSON.stringify({ title: x.title, rollMs: x.rollMs, prizes: x.prizes || [], entrants: x.entrants || [], winners: x.winners || [], syncIgnore: x.syncIgnore || [] }));
+  const sameJSON = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const keepCloud = () => { try { localStorage.setItem(CLOUD_KEY, JSON.stringify(cloud)); } catch (e) {} };
+  const pendingChanges = () => !cloud.base || !sameJSON(sharedOf(S), cloud.base);
+
+  // Don't redraw a table while someone is typing in it; redraw when they leave the field.
+  function safeRender() {
+    const a = document.activeElement;
+    if (a && a.closest && a.closest('#prize-table, #entrant-table')) { pendingRender = true; return; }
+    renderAll();
+  }
+  document.addEventListener('focusout', () => { if (pendingRender) setTimeout(() => { if (pendingRender) { pendingRender = false; safeRender(); } }, 0); });
+
+  // Merge one list: start from theirs, then apply what changed here since the last saved copy.
+  function mergeList(b, m, t) {
+    const B = new Map(b.map((x) => [x.id, x])), M = new Map(m.map((x) => [x.id, x]));
+    const out = new Map();
+    for (const x of t) {
+      if (B.has(x.id) && !M.has(x.id)) continue;                                        // removed here
+      const mine = M.get(x.id);
+      out.set(x.id, mine && B.has(x.id) && !sameJSON(mine, B.get(x.id)) ? mine : x);     // edited here
+    }
+    for (const x of m) if (!B.has(x.id) && !out.has(x.id)) out.set(x.id, x);            // added here
+    const list = [...out.values()];
+    const order = (arr, other) => arr.map((x) => x.id).filter((id) => other.has(id) && out.has(id));
+    if (!sameJSON(order(b, M), order(m, B))) {                                         // re-ordered here
+      const pos = new Map(m.map((x, i) => [x.id, i]));
+      list.sort((x, y) => (pos.has(x.id) ? pos.get(x.id) : 1e9) - (pos.has(y.id) ? pos.get(y.id) : 1e9));
+    }
+    return list;
+  }
+  function merge3(base, mine, theirs, firstTime) {
+    const dflt = defaults();
+    const pick = firstTime
+      ? (k) => (sameJSON(theirs[k], k === 'title' ? up(dflt[k]) : dflt[k]) ? mine[k] : theirs[k]) // keep a custom title from this device
+      : (k) => (!sameJSON(mine[k], base[k]) ? mine[k] : theirs[k]);
+    return {
+      title: pick('title'), rollMs: pick('rollMs'),
+      prizes: mergeList(base.prizes, mine.prizes, theirs.prizes),
+      entrants: mergeList(base.entrants, mine.entrants, theirs.entrants),
+      winners: mergeList(base.winners, mine.winners, theirs.winners),
+      syncIgnore: [...new Set([...(theirs.syncIgnore || []), ...(mine.syncIgnore || [])])],
+    };
+  }
+
+  // Same check-in name → same id everywhere; the same person added on two devices → kept once.
+  function tidyShared() {
+    const remap = new Map();
+    for (const e of S.entrants) if (e.src && !e.keep && e.id !== 'ci:' + e.src) { remap.set(e.id, 'ci:' + e.src); e.id = 'ci:' + e.src; }
+    const seen = new Map();
+    S.entrants = S.entrants.filter((e) => {
+      const k = e.src ? 'src:' + e.src : 'name:' + keyOf(e);
+      if (seen.has(k)) { remap.set(e.id, seen.get(k)); return false; }
+      seen.set(k, e.id); return true;
+    });
+    if (remap.size) S.winners.forEach((w) => { if (remap.has(w.entrantId)) w.entrantId = remap.get(w.entrantId); });
+    if (lastWinner && !S.winners.some((w) => w.id === lastWinner.id)) lastWinner = null;
+  }
+
+  // A newer online copy arrived: combine it with anything changed here that isn't saved yet.
+  function mergeIn(theirs, version) {
+    const mine = sharedOf(S);
+    let merged;
+    if (!theirs) merged = mine;                                        // nothing online yet
+    else if (!cloud.base) merged = merge3(EMPTY, mine, theirs, true);  // first time on this device: keep both
+    else if (sameJSON(mine, cloud.base)) merged = theirs;              // nothing changed here
+    else merged = merge3(cloud.base, mine, theirs, false);
+    cloud = { version, base: theirs || null };
+    keepCloud();
+    if (!sameJSON(merged, mine)) {
+      Object.assign(S, merged);
+      tidyShared();
+      upperAll();
+      try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+      safeRender();
+    }
+    if (pendingChanges()) scheduleCloudSave(300);
+  }
+
+  function onSaved() { if (CLOUD_READY) scheduleCloudSave(400); }
+  function scheduleCloudSave(ms) { clearTimeout(cloudTimer); cloudTimer = setTimeout(cloudSave, ms); renderCloud(); }
+
+  async function cloudSave() {
+    if (!CLOUD_READY || isLocked()) return;
+    if (cloudBusy || rolling) { scheduleCloudSave(1000); return; }
+    if (!pendingChanges()) { renderCloud(); return; }
+    const mine = sharedOf(S);
+    cloudBusy = true;
+    try {
+      const r = await post({ action: 'raffleSave', base: cloud.version, state: mine });
+      if (r.conflict) mergeIn(r.state, r.version);                     // another device saved first
+      else { cloud = { version: r.version, base: mine }; keepCloud(); cloudInfo = { ok: true, at: Date.now() }; }
+    } catch (e) {
+      if (e.needPin) lockRaffle('The staff PIN was changed — type the new one.');
+      else { cloudInfo = { ...cloudInfo, ok: false }; scheduleCloudSave(5000); } // try again
+    } finally {
+      cloudBusy = false;
+      renderCloud();
+    }
+  }
+
+  // Every few seconds: newer prizes/names/winners from other devices, plus who has checked in.
+  function useCloudAnswer(r) {
+    cloudInfo = { ok: true, at: Date.now() };
+    if ('state' in r) mergeIn(r.state, r.version);
+    if (S.sync.on && isOnline(syncBase()) && Array.isArray(r.attendees)) {
+      applyAttendees(r.attendees);
+      syncInfo = { ok: true, at: Date.now(), count: r.attendees.length };
+    }
+  }
+  async function cloudTick() {
+    if (!CLOUD_READY || isLocked() || cloudBusy || rolling) return;
+    cloudBusy = true;
+    try {
+      useCloudAnswer(await post({ action: 'raffle', have: cloud.version }));
+    } catch (e) {
+      if (e.needPin) lockRaffle('The staff PIN was changed — type the new one.');
+      cloudInfo = { ...cloudInfo, ok: false };
+      if (S.sync.on && isOnline(syncBase())) syncInfo = { ...syncInfo, ok: false };
+    } finally {
+      cloudBusy = false;
+      renderSync(); renderCloud();
+      if (CLOUD_READY && pendingChanges()) scheduleCloudSave(300);
+    }
+  }
+
+  function startCloud(firstAnswer) {
+    if (!CLOUD) return;
+    CLOUD_READY = true;
+    tidyShared();
+    if (firstAnswer) { useCloudAnswer(firstAnswer); renderCloud(); if (pendingChanges()) scheduleCloudSave(300); }
+    else cloudTick();
+  }
+
+  function renderCloud() {
+    const chip = $('cloud-chip'), status = $('cloud-status');
+    if (!CLOUD) return;
+    chip.hidden = !CLOUD_READY;
+    if (!CLOUD_READY) return;
+    const t = cloudInfo.at ? new Date(cloudInfo.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+    if (cloudInfo.ok === false) {
+      chip.className = 'cloud-chip bad'; chip.textContent = '● Not saved online';
+      status.textContent = 'Can’t reach the online raffle — check the internet. Your changes are kept on this computer and will be saved online as soon as the connection is back.';
+    } else if (pendingChanges() || cloudInfo.ok === null) {
+      chip.className = 'cloud-chip'; chip.textContent = 'Saving…';
+      status.textContent = 'Saving online…';
+    } else {
+      chip.className = 'cloud-chip ok'; chip.textContent = '● Saved online';
+      status.textContent = `Saved online (checked ${t}). Every device that opens this raffle with the staff PIN sees the same prizes, names and winners. Download a backup too, just in case.`;
+    }
+  }
+
+  // Leaving or hiding the page: send any unsaved change right away
+  document.addEventListener('visibilitychange', () => { if (document.hidden && CLOUD_READY && pendingChanges()) cloudSave(); });
+  if (CLOUD && pin) startCloud();
+  setInterval(cloudTick, 5000);
   setInterval(syncNow, 5000);
   syncNow();
 
