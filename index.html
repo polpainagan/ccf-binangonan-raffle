@@ -4,6 +4,11 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>CCF Raffle Draw</title>
+<script>
+  // The online raffle opens only with the staff PIN (remembered on this device after the first time).
+  try { if (!location.pathname.startsWith('/raffle') && !localStorage.getItem('ccf-raffle-pin')) document.documentElement.classList.add('locked'); }
+  catch (e) { document.documentElement.classList.add('locked'); }
+</script>
 <link rel="icon" href="ccf-logo.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -172,6 +177,21 @@
   #confetti { position: absolute; inset: 0; pointer-events: none; width: 100%; height: 100%; }
 
   .search { max-width: 220px; }
+
+  /* ---------- PIN screen ---------- */
+  #lock { display: none; }
+  html.locked .topbar, html.locked section[id^="tab-"] { display: none !important; }
+  html.locked #lock {
+    display: flex; min-height: 100vh; align-items: center; justify-content: center; padding: 20px;
+    background: radial-gradient(1200px 600px at 50% 20%, var(--stage-2), var(--stage-1));
+  }
+  .lock-card { background: var(--surface); border-radius: 24px; padding: 32px 28px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+  .lock-card img { width: 64px; height: 64px; }
+  .lock-card h1 { font-size: 24px; font-weight: 800; margin-top: 10px; }
+  .lock-card p { color: var(--muted); margin-top: 4px; }
+  .lock-card form { display: flex; gap: 8px; margin-top: 20px; }
+  .lock-card input[type=password] { flex: 1; min-width: 0; font-size: 22px; text-align: center; letter-spacing: .25em; border: 1px solid #d5d7e3; border-radius: 12px; padding: 10px; }
+  .lock-card .err { color: var(--error); font-weight: 700; margin-top: 12px; min-height: 1.4em; }
   .pill.live { background: #e7f6ec; color: #17663a; }
   .pill.off { background: var(--ground); color: var(--muted); }
   .pill.bad { background: #fdecea; color: var(--error); }
@@ -425,9 +445,23 @@
       <label class="btn ghost" style="cursor:pointer">Restore backup<input type="file" id="restore" accept=".json" hidden /></label>
       <button class="btn ghost" id="sample">Load sample data (for testing)</button>
       <button class="btn danger" id="reset-all">Start over (erase everything)</button>
+      <button class="btn ghost" id="lock-btn" hidden title="Ask for the staff PIN again before anyone can see the raffle on this computer">Lock raffle</button>
     </div>
   </div>
 </section>
+
+<div id="lock">
+  <div class="lock-card">
+    <img src="ccf-logo.png" alt="" />
+    <h1>Raffle Draw</h1>
+    <p>Type the staff PIN to open the raffle.</p>
+    <form id="lock-form" autocomplete="off">
+      <input type="password" id="lock-pin" aria-label="Staff PIN" placeholder="PIN" autocapitalize="characters" />
+      <button class="btn" type="submit" id="lock-go">Open</button>
+    </form>
+    <p class="err" id="lock-err"></p>
+  </div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -835,7 +869,7 @@
   });
 
   document.addEventListener('keydown', (ev) => {
-    if (tab !== 'draw') return;
+    if (tab !== 'draw' || document.documentElement.classList.contains('locked')) return;
     if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
     if (ev.code === 'Space' || ev.code === 'Enter') {
       ev.preventDefault();
@@ -1063,7 +1097,56 @@
   if (S.sync.on === null) S.sync.on = servedByCheckin || !!ONLINE_CHECKIN;
   const syncBase = () => (S.sync.url || (servedByCheckin ? '' : ONLINE_CHECKIN || 'http://localhost:5185')).trim().replace(/\/+$/, '');
   const isOnline = (base) => /^https:\/\/script\.google(usercontent)?\.com\//.test(base);
-  const attendeesUrl = () => { const b = syncBase(); return isOnline(b) ? `${b}?action=attendees` : `${b}/api/attendees`; };
+  const attendeesUrl = () => `${syncBase()}/api/attendees`; // check-in program on a laptop (no PIN)
+
+  // ---- PIN screen (online raffle only). The online check-in only gives out names with the staff PIN.
+  const NEEDS_PIN = !servedByCheckin && !!ONLINE_CHECKIN;
+  const PIN_KEY = 'ccf-raffle-pin';
+  let pin = '';
+  try { pin = localStorage.getItem(PIN_KEY) || ''; } catch (e) {}
+  const isLocked = () => document.documentElement.classList.contains('locked');
+  function lockRaffle(message) {
+    pin = '';
+    try { localStorage.removeItem(PIN_KEY); } catch (e) {}
+    stopConfetti();
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    document.documentElement.classList.add('locked');
+    $('lock-err').textContent = message || '';
+    $('lock-pin').value = '';
+    $('lock-pin').focus();
+  }
+  // Ask the online check-in for the names, with the PIN. Returns the list, or throws (e.needPin when the PIN is wrong).
+  async function fetchOnline(base, withPin) {
+    const res = await fetch(base, { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'attendees', pin: withPin }) });
+    const data = await res.json();
+    if (data.needPin) throw Object.assign(new Error('Wrong PIN'), { needPin: true });
+    if (!res.ok || !Array.isArray(data.attendees)) throw new Error('Bad answer');
+    return data.attendees;
+  }
+  $('lock-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const tryPin = $('lock-pin').value.trim();
+    if (!tryPin) return;
+    $('lock-go').disabled = true; $('lock-go').textContent = 'Checking…'; $('lock-err').textContent = '';
+    try {
+      const list = await fetchOnline(ONLINE_CHECKIN, tryPin);
+      pin = tryPin;
+      try { localStorage.setItem(PIN_KEY, pin); } catch (e) {}
+      document.documentElement.classList.remove('locked');
+      if (S.sync.on && isOnline(syncBase())) { applyAttendees(list); syncInfo = { ok: true, at: Date.now(), count: list.length }; }
+      renderAll();
+    } catch (e) {
+      $('lock-err').textContent = e.needPin ? 'Wrong PIN — try again.' : 'Can’t check the PIN right now — check the internet and try again.';
+      $('lock-pin').select();
+    } finally {
+      $('lock-go').disabled = false; $('lock-go').textContent = 'Open';
+    }
+  });
+  $('lock-btn').hidden = !NEEDS_PIN;
+  $('lock-btn').addEventListener('click', () => {
+    if (confirm('Lock the raffle on this computer? You will need the staff PIN to open it again. Names, prizes and winners stay saved.')) lockRaffle();
+  });
+  if (NEEDS_PIN && !pin) lockRaffle(); else document.documentElement.classList.remove('locked');
   let syncInfo = { ok: null, at: 0, count: 0 };
   let syncBusy = false;
 
@@ -1099,16 +1182,21 @@
   }
 
   async function syncNow() {
-    if (!S.sync.on || syncBusy) return;
+    if (!S.sync.on || syncBusy || isLocked()) return;
     syncBusy = true;
     try {
-      const res = await fetch(attendeesUrl(), { cache: 'no-store' });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      if (!Array.isArray(data.attendees)) throw new Error();
-      applyAttendees(data.attendees);
-      syncInfo = { ok: true, at: Date.now(), count: data.attendees.length };
+      let list;
+      if (isOnline(syncBase())) list = await fetchOnline(syncBase(), pin);
+      else {
+        const res = await fetch(attendeesUrl(), { cache: 'no-store' });
+        if (!res.ok) throw new Error();
+        list = (await res.json()).attendees;
+        if (!Array.isArray(list)) throw new Error();
+      }
+      applyAttendees(list);
+      syncInfo = { ok: true, at: Date.now(), count: list.length };
     } catch (e) {
+      if (e.needPin && NEEDS_PIN) lockRaffle('The staff PIN was changed — type the new one.');
       syncInfo = { ...syncInfo, ok: false };
     } finally {
       syncBusy = false;

@@ -264,11 +264,11 @@
   }
 
   function renderFoot() {
+    // Only shows something when there's a problem (no counts for guests to see)
     const r = state.rsvp || {};
-    const here = state.checkins.length;
-    let s = `${state.rsvps.length} RSVPs · ${here} here so far`;
-    if (r.error) s += ` · <span class="warn">${r.source === 'saved copy' ? 'Using saved RSVP list' : 'RSVP list not updated'} (${esc(r.error)})</span>`;
-    $('foot').innerHTML = s;
+    $('foot').innerHTML = r.error
+      ? `<span class="warn">${r.source === 'saved copy' ? 'Using saved RSVP list' : 'RSVP list not updated'} (${esc(r.error)})</span>`
+      : '';
   }
 
   // ---------- Search ----------
