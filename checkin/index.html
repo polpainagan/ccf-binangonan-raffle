@@ -377,7 +377,7 @@
         p.checkedInAt = r.checkin.at;
         showWelcome(p.nickname || p.first || p.full, r.already
           ? `You were already checked in at ${time(r.checkin.at)}.`
-          : 'You’re checked in. Enjoy the night!', !r.already);
+          : 'You’re checked in. Enjoy the event!', !r.already);
         refresh();
       } catch (e) {
         showProblem(e.message);
@@ -473,7 +473,7 @@
     btn.disabled = true; btn.textContent = 'Registering…';
     try {
       const r = await api('walkin', person);
-      showWelcome(r.checkin.first, 'You’re registered. Enjoy the night!', true);
+      showWelcome(r.checkin.first, 'You’re registered. Enjoy the event!', true);
       refresh();
     } catch (e) {
       $('w-error').textContent = e.message; $('w-error').hidden = false;
