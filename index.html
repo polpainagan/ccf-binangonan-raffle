@@ -1134,7 +1134,7 @@
       try { localStorage.setItem(PIN_KEY, pin); } catch (e) {}
       document.documentElement.classList.remove('locked');
       if (S.sync.on && isOnline(syncBase())) { applyAttendees(list); syncInfo = { ok: true, at: Date.now(), count: list.length }; }
-      renderAll();
+      renderAll(); renderSync();
     } catch (e) {
       $('lock-err').textContent = e.needPin ? 'Wrong PIN — try again.' : 'Can’t check the PIN right now — check the internet and try again.';
       $('lock-pin').select();
