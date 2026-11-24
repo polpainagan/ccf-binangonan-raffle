@@ -72,7 +72,7 @@
   select:invalid { color: #8a8fa8; }
   select option { color: var(--ink); }
   input[type=text]::placeholder, textarea::placeholder { text-transform: none; }
-  input[type=text], input[type=number], textarea, select {
+  input[type=text], input[type=number], input[type=url], textarea, select {
     border: 1px solid #d5d7e3; border-radius: 10px; padding: 9px 11px; background: #fff; width: 100%;
   }
   input:focus, textarea:focus, select:focus { outline: 2px solid var(--brand); outline-offset: 1px; border-color: transparent; }
@@ -172,6 +172,11 @@
   #confetti { position: absolute; inset: 0; pointer-events: none; width: 100%; height: 100%; }
 
   .search { max-width: 220px; }
+  .pill.live { background: #e7f6ec; color: #17663a; }
+  .pill.off { background: var(--ground); color: var(--muted); }
+  .pill.bad { background: #fdecea; color: var(--error); }
+  details.sync-addr summary { cursor: pointer; font-size: 14px; color: var(--muted); font-weight: 600; }
+  details.sync-addr .row { margin-top: 8px; }
   .m-only { display: none; }
 
   /* ---------- Phones ---------- */
@@ -317,6 +322,26 @@
 <!-- ===== ENTRANTS ===== -->
 <section id="tab-entrants" class="page" hidden>
   <div class="card stack">
+    <div class="toolbar" style="margin-top:0">
+      <h2 style="margin:0">Live check-in</h2>
+      <span class="pill off" id="sync-pill">Off</span>
+      <span class="spacer"></span>
+      <label class="check"><input type="checkbox" id="sync-on" /> Add people automatically as they check in</label>
+    </div>
+    <p class="hint" id="sync-msg"></p>
+    <details class="sync-addr">
+      <summary>Check-in address</summary>
+      <form class="row" id="sync-form">
+        <div class="field" style="flex: 3 1 260px">
+          <input type="url" id="sync-url" placeholder="http://localhost:5185" aria-label="Check-in address" />
+        </div>
+        <button class="btn ghost" type="submit">Save</button>
+      </form>
+      <p class="hint" style="margin-top:6px">Leave blank to use the online check-in. Only if you run the check-in program (start.bat) on a laptop instead, type its address here, e.g. http://localhost:5185</p>
+    </details>
+  </div>
+
+  <div class="card stack">
     <div>
       <h2>Add one name</h2>
     </div>
@@ -416,9 +441,11 @@
     title: 'CCF Binangonan Raffle Draw',
     rollMs: 3500,
     prizes: [],     // {id, name, qty}
-    entrants: [],   // {id, last, first, mi, ministry}
+    entrants: [],   // {id, last, first, mi, ministry, src?, kind?, keep?}  src = check-in id when added by Live check-in
     winners: [],    // {id, prizeId, prizeName, entrantId, name, ministry, at, absent}
     currentPrizeId: null,
+    sync: { on: null, url: '' }, // Live check-in; on=null means "decide automatically"
+    syncIgnore: [], // check-in ids removed by hand here, so they don't come back
   });
   let S = defaults();
   try {
@@ -679,7 +706,7 @@
       <thead><tr><th>Name</th><th>Ministry</th><th>Status</th><th></th></tr></thead>
       <tbody>${list.map(e => `<tr>
         <td class="m-full m-strong">${esc(fullName(e))}</td><td class="m-muted">${esc(e.ministry)}</td>
-        <td>${wonIds.has(e.id) ? '<span class="pill done">Won</span>' : absentIds.has(e.id) ? '<span class="pill warm">Absent</span>' : ''}</td>
+        <td>${wonIds.has(e.id) ? '<span class="pill done">Won</span>' : absentIds.has(e.id) ? '<span class="pill warm">Absent</span>' : ''}${e.src ? ` <span class="pill">${e.kind === 'walkin' ? 'Walk-in' : 'Checked in'}</span>` : ''}</td>
         <td class="actions"><button class="btn danger small" data-edel="${e.id}">Remove</button></td>
       </tr>`).join('')}</tbody></table></div>`;
   }
@@ -707,7 +734,7 @@
     renderCounts();
     if (tab === 'draw') renderStage();
     if (tab === 'prizes') renderPrizes();
-    if (tab === 'entrants') renderEntrants();
+    if (tab === 'entrants') { renderEntrants(); renderSync(); }
     if (tab === 'winners') renderWinners();
     if (tab === 'settings') renderSettings();
   }
@@ -923,13 +950,17 @@
     const b = ev.target.closest('[data-edel]'); if (!b) return;
     const id = b.dataset.edel;
     if (S.winners.some(w => w.entrantId === id) && !confirm('This person is on the winners list. Remove them and their win?')) return;
+    const gone = S.entrants.find(e => e.id === id);
+    if (gone && gone.src) S.syncIgnore.push(gone.src); // don't let Live check-in add them back
     S.entrants = S.entrants.filter(e => e.id !== id);
     S.winners = S.winners.filter(w => w.entrantId !== id);
     save(); renderAll();
   });
   $('clear-entrants').addEventListener('click', () => {
-    if (!S.entrants.length || !confirm(`Remove all ${S.entrants.length} names? Winners will be cleared too.`)) return;
-    S.entrants = []; S.winners = []; lastWinner = null;
+    const live = S.sync.on && S.entrants.some(e => e.src);
+    if (!S.entrants.length || !confirm(`Remove all ${S.entrants.length} names? Winners will be cleared too.`
+      + (live ? '\n\nLive check-in is on, so people who checked in will be added back. Turn it off first to keep the list empty.' : ''))) return;
+    S.entrants = []; S.winners = []; S.syncIgnore = []; lastWinner = null;
     save(); renderAll();
   });
 
@@ -1020,6 +1051,105 @@
     const r = addEntrants(list);
     toast(`Sample loaded: ${r.added} made-up names`);
   });
+
+  // ---------- Live check-in ----------
+  // People who check in at the lobby (and walk-ins) are added to the names automatically.
+  // The check-in program serves this page at /raffle/, so in that case it talks to itself.
+  // Online check-in (the Google Sheet script's Web app link). Used when this page is on the web.
+  const ONLINE_CHECKIN = 'https://script.google.com/macros/s/AKfycbwLvX7ZZBybKbCbVRLFMhP-JerA8YvIvomVElbN1tGaPmen_w0E-BH6V1ve8kdN_rNU7g/exec';
+  const servedByCheckin = location.pathname.startsWith('/raffle');
+  if (!S.sync || typeof S.sync !== 'object') S.sync = { on: null, url: '' };
+  if (!Array.isArray(S.syncIgnore)) S.syncIgnore = [];
+  if (S.sync.on === null) S.sync.on = servedByCheckin || !!ONLINE_CHECKIN;
+  const syncBase = () => (S.sync.url || (servedByCheckin ? '' : ONLINE_CHECKIN || 'http://localhost:5185')).trim().replace(/\/+$/, '');
+  const isOnline = (base) => /^https:\/\/script\.google(usercontent)?\.com\//.test(base);
+  const attendeesUrl = () => { const b = syncBase(); return isOnline(b) ? `${b}?action=attendees` : `${b}/api/attendees`; };
+  let syncInfo = { ok: null, at: 0, count: 0 };
+  let syncBusy = false;
+
+  function applyAttendees(list) {
+    if (rolling) return false; // never change names in the middle of a draw
+    const ids = new Set(list.map(a => a.id));
+    const ignore = new Set(S.syncIgnore);
+    const bySrc = new Set(S.entrants.filter(e => e.src).map(e => e.src));
+    const typedIn = new Map(S.entrants.filter(e => !e.src).map(e => [keyOf(e), e]));
+    let added = 0, removed = 0, changed = false;
+    for (const a of list) {
+      if (bySrc.has(a.id) || ignore.has(a.id)) continue;
+      const e = { last: up(cap(a.last || '')), first: up(cap(a.first || '')), mi: up(a.mi || ''), ministry: up(cap(a.ministry || '')) };
+      if (!e.last && !e.first) continue;
+      const same = typedIn.get(keyOf(e));
+      if (same) { same.src = a.id; same.kind = a.type; same.keep = true; changed = true; continue; } // already typed in here
+      S.entrants.push({ id: uid(), ...e, src: a.id, kind: a.type });
+      added++;
+    }
+    // Check-ins undone at the lobby leave the raffle too — unless they already won or were typed in here
+    const winnerIds = new Set(S.winners.map(w => w.entrantId));
+    S.entrants = S.entrants.filter(e => {
+      if (!e.src || ids.has(e.src)) return true;
+      if (e.keep || winnerIds.has(e.id)) return true;
+      removed++; return false;
+    });
+    S.syncIgnore = S.syncIgnore.filter(id => ids.has(id));
+    if (added || removed || changed) {
+      save(); renderAll();
+      if (added && tab !== 'draw') toast(`${added} new name${added === 1 ? '' : 's'} from check-in`);
+    }
+    return true;
+  }
+
+  async function syncNow() {
+    if (!S.sync.on || syncBusy) return;
+    syncBusy = true;
+    try {
+      const res = await fetch(attendeesUrl(), { cache: 'no-store' });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      if (!Array.isArray(data.attendees)) throw new Error();
+      applyAttendees(data.attendees);
+      syncInfo = { ok: true, at: Date.now(), count: data.attendees.length };
+    } catch (e) {
+      syncInfo = { ...syncInfo, ok: false };
+    } finally {
+      syncBusy = false;
+      renderSync();
+    }
+  }
+
+  function renderSync() {
+    const pill = $('sync-pill'), msg = $('sync-msg');
+    $('sync-on').checked = !!S.sync.on;
+    if (document.activeElement !== $('sync-url')) $('sync-url').value = S.sync.url || '';
+    const fromCheckin = S.entrants.filter(e => e.src).length;
+    if (!S.sync.on) {
+      pill.className = 'pill off'; pill.textContent = 'Off';
+      msg.textContent = 'Turn this on to add people automatically when they check in at the lobby.';
+    } else if (syncInfo.ok === null) {
+      pill.className = 'pill off'; pill.textContent = 'Connecting…'; msg.textContent = '';
+    } else if (syncInfo.ok) {
+      pill.className = 'pill live'; pill.textContent = '● Live';
+      msg.textContent = `${syncInfo.count} checked in so far · ${fromCheckin} of them in the names below · updates every few seconds`;
+    } else {
+      pill.className = 'pill bad'; pill.textContent = 'Not connected';
+      msg.textContent = (isOnline(syncBase())
+        ? 'Can’t reach the online check-in. Check this laptop’s internet connection — it keeps trying by itself'
+        : `Can't reach the check-in at ${syncBase() || location.origin}. Make sure the check-in window is open on that laptop`)
+        + (syncInfo.at ? ` (last update ${new Date(syncInfo.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}).` : '.');
+    }
+  }
+
+  $('sync-on').addEventListener('change', (ev) => {
+    S.sync.on = ev.target.checked; syncInfo = { ok: null, at: 0, count: 0 };
+    save(); renderSync(); syncNow();
+  });
+  $('sync-form').addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    S.sync.url = $('sync-url').value.trim();
+    syncInfo = { ok: null, at: 0, count: 0 };
+    save(); renderSync(); syncNow(); toast('Check-in address saved');
+  });
+  setInterval(syncNow, 5000);
+  syncNow();
 
   showTab(tab);
 })();

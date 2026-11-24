@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Check-in Staff</title>
+<link rel="icon" href="ccf-logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ground: #f6f7fb; --surface: #fff; --ink: #16163a; --muted: #5a5f7a; --line: #e4e6ef;
+    --brand: #17a5b8; --accent: #0e7c8c; --accent-dark: #0a6371; --accent-soft: #dff2f4; --accent-ink: #0a4f5a;
+    --ok: #17663a; --ok-soft: #e7f6ec; --warm: #c2410c; --warm-soft: #fff1ea; --error: #b42318; --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--ground); color: var(--ink); font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 16px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  h1, h2, p { margin: 0; }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  [hidden] { display: none !important; }
+
+  .topbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; }
+  .brand img { width: 34px; height: 34px; }
+  .brand small { display: block; font-weight: 600; color: var(--muted); font-size: 13px; }
+  .links { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+  .page { max-width: 1080px; margin: 0 auto; padding: 20px 20px 60px; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+  .stat .n { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .stat .l { color: var(--muted); font-size: 14px; font-weight: 600; }
+  .stat.ok .n { color: var(--ok); }
+  .stat.warm .n { color: var(--warm); }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; margin-top: 16px; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .seg { display: inline-flex; background: var(--ground); border-radius: 999px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+  .seg button { border: 0; background: transparent; padding: 7px 14px; border-radius: 999px; font-weight: 700; color: var(--muted); font-size: 14px; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .spacer { flex: 1; }
+  input[type=text] { border: 1px solid #d5d7e3; border-radius: 10px; padding: 8px 11px; background: #fff; min-width: 220px; }
+  input:focus { outline: 2px solid var(--brand); outline-offset: 1px; border-color: transparent; }
+  .btn { border: 1px solid transparent; background: var(--accent); color: #fff; font-weight: 700; padding: 8px 14px; border-radius: 10px; white-space: nowrap; text-decoration: none; display: inline-block; font-size: 15px; }
+  .btn:hover { background: var(--accent-dark); }
+  .btn.ghost { background: #fff; color: var(--accent-ink); border-color: #d5d7e3; }
+  .btn.ghost:hover { background: var(--accent-soft); }
+  .btn.danger { background: #fff; color: var(--error); border-color: #f0c4c0; }
+  .btn.danger:hover { background: #fdecea; }
+  .btn.small { padding: 4px 10px; font-size: 14px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 15px; margin-top: 12px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { font-size: 13px; color: var(--muted); font-weight: 700; position: sticky; top: 0; background: #fff; }
+  td.actions { text-align: right; white-space: nowrap; width: 1%; }
+  .name { font-weight: 700; text-transform: uppercase; }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .pill.ok { background: var(--ok-soft); color: var(--ok); }
+  .pill.walk { background: var(--accent-soft); color: var(--accent-ink); }
+  .pill.no { background: var(--ground); color: var(--muted); }
+  .muted { color: var(--muted); }
+  .empty { padding: 28px; text-align: center; color: var(--muted); }
+  .status { font-size: 14px; color: var(--muted); margin-top: 10px; }
+  .status .warn { color: var(--warm); font-weight: 700; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 10px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 50; }
+  .toast.show { opacity: 1; }
+
+  @media (max-width: 640px) {
+    .page { padding: 12px 12px 48px; }
+    .links { margin-left: 0; width: 100%; }
+    input[type=text] { min-width: 0; flex: 1 1 100%; font-size: 16px; }
+    thead { display: none; }
+    table, tbody { display: block; }
+    tr { display: flex; flex-wrap: wrap; gap: 4px 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+    td { border: 0; padding: 0; }
+    td.n-full { flex: 1 1 100%; }
+    td.actions { margin-left: auto; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><img src="ccf-logo.png" alt="" /><div>Check-in staff<small id="event-name"></small></div></div>
+  <div class="links">
+    <a class="btn ghost" href="./" target="_blank">Open check-in screen</a>
+    <a class="btn ghost" id="raffle-link" href="../" target="_blank">Open raffle</a>
+  </div>
+</header>
+
+<div class="page">
+  <div class="stats">
+    <div class="stat"><div class="n" id="s-rsvp">–</div><div class="l">RSVPs</div></div>
+    <div class="stat ok"><div class="n" id="s-in">–</div><div class="l">RSVPs checked in</div></div>
+    <div class="stat"><div class="n" id="s-walk">–</div><div class="l">Walk-ins</div></div>
+    <div class="stat ok"><div class="n" id="s-here">–</div><div class="l">Total here (in the raffle)</div></div>
+    <div class="stat warm"><div class="n" id="s-not">–</div><div class="l">RSVPs not yet here</div></div>
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <div class="seg" id="filters">
+        <button data-f="here" aria-pressed="true">Here</button>
+        <button data-f="not">Not yet here</button>
+        <button data-f="walk">Walk-ins</button>
+        <button data-f="all">All RSVPs</button>
+      </div>
+      <span class="spacer"></span>
+      <input type="text" id="q" placeholder="Search name or ministry…" />
+    </div>
+    <div class="toolbar" style="margin-top:10px">
+      <button class="btn ghost small" id="reload">Re-read RSVP sheet now</button>
+      <button class="btn ghost small" id="report">Download attendance (CSV)</button>
+    </div>
+    <p class="status" id="status"></p>
+    <div id="list"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="config.js"></script>
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const norm = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const time = (t) => new Date(t).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
+  let state = { rsvps: [], checkins: [], rsvp: {} };
+  let filter = 'here';
+  try { filter = sessionStorage.getItem('staff-filter') || 'here'; } catch (e) {}
+
+  let toastT;
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400); }
+
+  const API = String(window.CHECKIN_API || '').trim(); // Google Sheet script, or '' for the laptop program
+  if (window.RAFFLE_URL) $('raffle-link').href = window.RAFFLE_URL;
+
+  async function api(action, data) {
+    let res;
+    if (API) {
+      res = data
+        ? await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action, ...data }) })
+        : await fetch(`${API}?action=${action}`);
+    } else {
+      res = await fetch(`/api/${action}`, data ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) } : {});
+    }
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok || out.error) throw Object.assign(new Error(out.error || 'Something went wrong'), { needPin: !!out.needPin });
+    return out;
+  }
+
+  // Undo needs the staff PIN (online only). Asked once, then remembered until this tab closes.
+  let pin = '';
+  try { pin = sessionStorage.getItem('staff-pin') || ''; } catch (e) {}
+  async function undo(id) {
+    for (let tries = 0; tries < 3; tries++) {
+      try { return await api('undo', { id, pin }); }
+      catch (e) {
+        if (!e.needPin) throw e;
+        const p = prompt(tries ? 'Wrong PIN. Staff PIN:' : 'Staff PIN (needed to undo a check-in):');
+        if (p === null) throw new Error('Undo cancelled');
+        pin = p.trim();
+        try { sessionStorage.setItem('staff-pin', pin); } catch (err) {}
+      }
+    }
+    throw new Error('Wrong PIN');
+  }
+
+  async function refresh() {
+    try {
+      state = await api('state');
+      render();
+    } catch (e) {
+      $('status').innerHTML = API
+        ? '<span class="warn">Can’t reach the online check-in — check this device’s internet. Retrying…</span>'
+        : /^https?:$/.test(location.protocol)
+        ? '<span class="warn">Can’t reach the check-in program. Double-click start.bat and keep its black window open.</span>'
+        : '<span class="warn">This page was opened as a file. Double-click start.bat, then use <a href="http://localhost:5185/staff">http://localhost:5185/staff</a></span>';
+    }
+  }
+
+  function rows() {
+    const byId = new Map(state.checkins.map((c) => [c.id, c]));
+    const rsvpRows = state.rsvps.map((p) => {
+      const c = p.checkinId ? byId.get(p.checkinId) : null;
+      return { kind: 'rsvp', name: p.full, ministry: p.ministry, nickname: p.nickname, rsvpId: p.id, checkin: c || null, sort: `${p.last} ${p.first}` };
+    });
+    const walkRows = state.checkins.filter((c) => c.type === 'walkin').map((c) => ({
+      kind: 'walk', name: `${c.last}, ${c.first}${c.mi ? ' ' + c.mi : ''}`, ministry: c.ministry, nickname: '', checkin: c, sort: `${c.last} ${c.first}`,
+    }));
+    let list;
+    if (filter === 'here') list = [...rsvpRows.filter((r) => r.checkin), ...walkRows].sort((a, b) => b.checkin.at - a.checkin.at);
+    else if (filter === 'not') list = rsvpRows.filter((r) => !r.checkin);
+    else if (filter === 'walk') list = walkRows.sort((a, b) => b.checkin.at - a.checkin.at);
+    else list = rsvpRows;
+    const q = norm($('q').value);
+    if (q) list = list.filter((r) => q.split(' ').every((t) => norm(`${r.name} ${r.ministry} ${r.nickname}`).includes(t)));
+    return list;
+  }
+
+  // Only touch the list when something changed, so a refresh never swallows a click
+  let lastList = '';
+  function setList(h) { if (h !== lastList) { lastList = h; $('list').innerHTML = h; } }
+
+  function render() {
+    $('event-name').textContent = state.eventName || '';
+    const inN = state.checkins.filter((c) => c.type === 'rsvp').length;
+    const walkN = state.checkins.filter((c) => c.type === 'walkin').length;
+    $('s-rsvp').textContent = state.rsvps.length;
+    $('s-in').textContent = inN;
+    $('s-walk').textContent = walkN;
+    $('s-here').textContent = inN + walkN;
+    $('s-not').textContent = state.rsvps.filter((p) => !p.checkedInAt).length;
+    document.querySelectorAll('#filters button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.f === filter));
+
+    const r = state.rsvp || {};
+    $('status').innerHTML = `RSVP list ${r.source === 'live' ? 'read from the Google Sheet' : 'from saved copy'} at ${r.fetchedAt ? time(r.fetchedAt) : '–'}`
+      + (r.error ? ` · <span class="warn">${esc(r.error)}</span>` : '') + ' · this page updates by itself';
+
+    const list = rows();
+    if (!list.length) { setList(`<div class="empty">${filter === 'here' ? 'No one has checked in yet.' : filter === 'walk' ? 'No walk-ins yet.' : 'Nothing to show.'}</div>`); return; }
+    setList(`<table><thead><tr><th>Name</th><th>Ministry</th><th>Status</th><th></th></tr></thead><tbody>${list.map((r) => {
+      const status = r.kind === 'walk' ? `<span class="pill walk">Walk-in · ${time(r.checkin.at)}</span>`
+        : r.checkin ? `<span class="pill ok">Checked in · ${time(r.checkin.at)}</span>` : '<span class="pill no">Not yet here</span>';
+      const action = r.checkin
+        ? `<button class="btn danger small" data-undo="${r.checkin.id}" data-name="${esc(r.name)}">Undo</button>`
+        : `<button class="btn small" data-in="${r.rsvpId}">Check in</button>`;
+      return `<tr><td class="n-full"><span class="name">${esc(r.name)}</span>${r.nickname ? ` <span class="muted">“${esc(r.nickname)}”</span>` : ''}</td>
+        <td class="muted">${esc(r.ministry)}</td><td>${status}</td><td class="actions">${action}</td></tr>`;
+    }).join('')}</tbody></table>`);
+  }
+
+  $('filters').addEventListener('click', (ev) => {
+    const b = ev.target.closest('button'); if (!b) return;
+    filter = b.dataset.f;
+    try { sessionStorage.setItem('staff-filter', filter); } catch (e) {}
+    render();
+  });
+  $('q').addEventListener('input', render);
+  $('list').addEventListener('click', async (ev) => {
+    const b = ev.target.closest('button'); if (!b) return;
+    try {
+      if (b.dataset.undo) {
+        if (!confirm(`Undo check-in for ${b.dataset.name}? They will also be taken out of the raffle (unless they already won).`)) return;
+        await undo(b.dataset.undo); toast('Check-in undone');
+      } else if (b.dataset.in) {
+        b.disabled = true; b.textContent = 'Checking in…';
+        await api('checkin', { rsvpId: b.dataset.in }); toast('Checked in');
+      }
+      refresh();
+    } catch (e) { toast(e.message); }
+  });
+  $('reload').addEventListener('click', async () => {
+    try { const r = await api('refresh', {}); toast(r.error ? r.error : `RSVP list updated — ${r.count} names`); refresh(); }
+    catch (e) { toast(e.message); }
+  });
+
+  // Attendance report: every RSVP (checked in / not arrived) plus walk-ins
+  $('report').addEventListener('click', () => {
+    const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const when = (t) => new Date(t).toLocaleString('en-PH');
+    const byId = new Map(state.checkins.map((c) => [c.id, c]));
+    const lines = [['Type', 'Last name', 'First name', 'M.I.', 'Ministry', 'Nickname', 'Status', 'Time']];
+    for (const p of state.rsvps) {
+      const c = p.checkinId ? byId.get(p.checkinId) : null;
+      lines.push(['RSVP', p.last, p.first, p.mi, p.ministry, p.nickname, c ? 'Checked in' : 'Not arrived', c ? when(c.at) : '']);
+    }
+    for (const c of state.checkins.filter((c) => c.type === 'walkin')) lines.push(['Walk-in', c.last, c.first, c.mi, c.ministry, '', 'Walk-in', when(c.at)]);
+    const a = document.createElement('a');
+    const csv = String.fromCharCode(0xFEFF) + lines.map((l) => l.map(cell).join(',')).join(String.fromCharCode(13, 10));
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = 'attendance.csv'; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+
+  refresh();
+  setInterval(refresh, API ? 6000 : 5000);
+})();
+</script>
+</body>
+</html>

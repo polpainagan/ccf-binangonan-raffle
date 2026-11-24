@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Event Check-in</title>
+<link rel="icon" href="ccf-logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ground: #f6f7fb;
+    --surface: #ffffff;
+    --ink: #16163a;
+    --muted: #5a5f7a;
+    --line: #e4e6ef;
+    --brand: #17a5b8;
+    --accent: #0e7c8c;
+    --accent-dark: #0a6371;
+    --accent-soft: #dff2f4;
+    --accent-ink: #0a4f5a;
+    --ok: #17663a;
+    --ok-soft: #e7f6ec;
+    --warm: #c2410c;
+    --warm-soft: #fff1ea;
+    --error: #b42318;
+    --gold: #f5c542;
+    --stage-1: #06323a;
+    --stage-2: #0a5361;
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; min-height: 100%;
+    background: radial-gradient(1400px 700px at 50% -10%, var(--stage-2), var(--stage-1));
+    background-attachment: fixed;
+    color: var(--ink);
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 18px; line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, p { margin: 0; }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  [hidden] { display: none !important; }
+
+  .wrap { max-width: 860px; margin: 0 auto; padding: 28px 20px 40px; min-height: 100vh; display: flex; flex-direction: column; }
+  .head { display: flex; align-items: center; gap: 16px; color: #fff; }
+  .head img { width: 64px; height: 64px; flex: none; }
+  .head .kicker { text-transform: uppercase; letter-spacing: .16em; font-size: 13px; font-weight: 700; color: var(--gold); }
+  .head h1 { font-size: clamp(22px, 3.4vw, 34px); font-weight: 800; letter-spacing: -0.01em; line-height: 1.15; }
+
+  .panel { margin-top: 28px; background: var(--surface); border-radius: 24px; padding: 28px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+  .panel h2 { font-size: clamp(24px, 3.4vw, 32px); font-weight: 800; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin-top: 4px; }
+
+  .search { position: relative; margin-top: 20px; }
+  .search input {
+    width: 100%; font-size: clamp(22px, 3vw, 28px); font-weight: 600; padding: 18px 20px 18px 60px;
+    border: 2px solid #d5d7e3; border-radius: 16px; background: #fff; text-transform: uppercase;
+  }
+  .search input::placeholder { text-transform: none; font-weight: 500; color: #9a9eb5; }
+  .search input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 4px rgba(23,165,184,.18); }
+  .search svg { position: absolute; left: 20px; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; color: var(--muted); }
+  .clear-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); border: 0; background: var(--ground); border-radius: 999px; padding: 6px 14px; font-weight: 700; color: var(--muted); font-size: 15px; }
+
+  .results { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .person {
+    display: flex; align-items: center; gap: 16px; width: 100%; text-align: left;
+    background: #fff; border: 2px solid var(--line); border-radius: var(--radius); padding: 16px 18px;
+    transition: border-color .15s, background .15s;
+  }
+  .person:hover, .person:focus-visible { border-color: var(--brand); background: #f7fcfd; outline: none; }
+  .person .who { flex: 1; min-width: 0; }
+  .person .name { font-size: 22px; font-weight: 800; text-transform: uppercase; overflow-wrap: anywhere; }
+  .person .meta { color: var(--muted); font-size: 16px; margin-top: 2px; }
+  .person .go { flex: none; background: var(--accent); color: #fff; font-weight: 800; border-radius: 12px; padding: 10px 18px; font-size: 17px; }
+  .person.done { background: var(--ok-soft); border-color: #bfe3cb; cursor: default; }
+  .person.done .go { background: transparent; color: var(--ok); padding: 10px 0; }
+  .note { padding: 22px; text-align: center; color: var(--muted); }
+  .note b { color: var(--ink); }
+
+  .walkin-cta {
+    margin-top: 22px; padding-top: 20px; border-top: 1px dashed var(--line);
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  .walkin-cta p { flex: 1 1 260px; color: var(--muted); }
+  .walkin-cta p b { color: var(--ink); }
+
+  .btn {
+    border: 2px solid transparent; background: var(--accent); color: #fff; font-weight: 800;
+    padding: 14px 24px; border-radius: 14px; font-size: 18px; white-space: nowrap;
+  }
+  .btn:hover { background: var(--accent-dark); }
+  .btn.ghost { background: #fff; color: var(--accent-ink); border-color: #cfd3e0; }
+  .btn.ghost:hover { background: var(--accent-soft); }
+  .btn.big { font-size: 22px; padding: 18px 32px; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* Walk-in form */
+  .form { margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr 110px; gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field.full { grid-column: 1 / -1; }
+  .field label { font-size: 15px; font-weight: 700; color: var(--muted); }
+  .field input {
+    font-size: 22px; font-weight: 600; padding: 14px 16px; border: 2px solid #d5d7e3; border-radius: 14px;
+    text-transform: uppercase; width: 100%; background: #fff;
+  }
+  .field input::placeholder { text-transform: none; font-weight: 500; color: #9a9eb5; }
+  .field input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 4px rgba(23,165,184,.18); }
+  .form-actions { grid-column: 1 / -1; display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
+  .error { grid-column: 1 / -1; color: var(--error); font-weight: 700; }
+
+  /* Confirm / success overlays */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(6, 30, 36, .72); display: flex; align-items: center; justify-content: center;
+    padding: 20px; z-index: 20; animation: fade .15s ease-out;
+  }
+  .dialog { background: #fff; border-radius: 26px; padding: 34px 30px; max-width: 620px; width: 100%; text-align: center; box-shadow: 0 30px 80px rgba(0,0,0,.35); }
+  .dialog .q { font-size: 18px; color: var(--muted); font-weight: 600; }
+  .dialog .big-name { font-size: clamp(28px, 4.4vw, 42px); font-weight: 800; letter-spacing: -0.01em; line-height: 1.15; margin-top: 8px; text-transform: uppercase; overflow-wrap: anywhere; }
+  .dialog .meta { color: var(--muted); margin-top: 6px; }
+  .dialog .actions { display: flex; gap: 12px; justify-content: center; margin-top: 26px; flex-wrap: wrap; }
+  .tick {
+    width: 96px; height: 96px; border-radius: 50%; background: var(--ok-soft); color: var(--ok);
+    display: grid; place-items: center; margin: 0 auto 16px; animation: pop .45s ease-out;
+  }
+  .tick svg { width: 54px; height: 54px; }
+  .tick.warn { background: var(--warm-soft); color: var(--warm); }
+  .welcome { font-size: clamp(30px, 5vw, 48px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; overflow-wrap: anywhere; }
+  .welcome-sub { margin-top: 12px; font-size: 20px; color: var(--muted); }
+  .raffle-badge { display: inline-block; margin-top: 16px; background: #fff5d6; color: #8a5a00; border-radius: 999px; padding: 6px 16px; font-weight: 800; }
+  .countdown { margin-top: 20px; font-size: 14px; color: var(--muted); }
+  @keyframes pop { 0% { transform: scale(.6); } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+  .foot { margin-top: auto; padding-top: 20px; text-align: center; color: rgba(255,255,255,.65); font-size: 14px; }
+  .foot .warn { color: #ffd7a8; font-weight: 700; }
+
+  @media (max-width: 640px) {
+    html, body { font-size: 16px; }
+    .wrap { padding: 16px 16px 28px; }
+    .head img { width: 44px; height: 44px; }
+    .panel { padding: 20px 16px; margin-top: 18px; border-radius: 20px; }
+    .search input { padding: 14px 16px 14px 50px; }
+    .search svg { left: 16px; width: 22px; height: 22px; }
+    .person { flex-wrap: wrap; padding: 14px; }
+    .person .name { font-size: 19px; }
+    .person .go { width: 100%; text-align: center; }
+    .person.done .go { text-align: left; padding: 0; }
+    .form { grid-template-columns: 1fr 1fr; }
+    .form .mi { grid-column: auto; }
+    .btn { width: 100%; }
+    .dialog { padding: 26px 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <img src="ccf-logo.png" alt="CCF" />
+    <div>
+      <div class="kicker">CCF Binangonan</div>
+      <h1 id="event-name">Event Check-in</h1>
+    </div>
+  </header>
+
+  <!-- ===== Find my RSVP ===== -->
+  <main class="panel" id="view-search">
+    <h2>Welcome! Let's check you in.</h2>
+    <p class="sub">Type your name the way you wrote it in the RSVP form.</p>
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="text" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Last name or first name" aria-label="Your name" autofocus />
+      <button class="clear-btn" id="clear-q" hidden>Clear</button>
+    </div>
+    <div class="results" id="results" aria-live="polite"></div>
+
+    <div class="walkin-cta">
+      <p><b>Didn't RSVP?</b> No problem — you can register here as a walk-in.</p>
+      <button class="btn ghost" id="go-walkin">Register as walk-in</button>
+    </div>
+  </main>
+
+  <!-- ===== Walk-in ===== -->
+  <main class="panel" id="view-walkin" hidden>
+    <h2>Walk-in registration</h2>
+    <p class="sub">For guests who did not fill out the RSVP form.</p>
+    <form class="form" id="walkin-form" autocomplete="off">
+      <div class="field"><label for="w-last">Last name</label><input id="w-last" type="text" required /></div>
+      <div class="field"><label for="w-first">First name</label><input id="w-first" type="text" required /></div>
+      <div class="field mi"><label for="w-mi">M.I.</label><input id="w-mi" type="text" maxlength="3" /></div>
+      <div class="field full"><label for="w-min">Ministry</label><input id="w-min" type="text" list="ministries" placeholder="e.g. Exalt, NxtGen, Welcome" required /></div>
+      <datalist id="ministries"></datalist>
+      <p class="error" id="w-error" hidden></p>
+      <div class="form-actions">
+        <button class="btn big" type="submit" id="w-submit">Register</button>
+        <button class="btn ghost big" type="button" id="w-back">Back</button>
+      </div>
+    </form>
+  </main>
+
+  <footer class="foot" id="foot"></footer>
+</div>
+
+<div class="overlay" id="overlay" hidden><div class="dialog" id="dialog" role="dialog" aria-modal="true"></div></div>
+
+<script src="config.js"></script>
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const norm = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/ñ/g, 'n').replace(/[^a-z0-9]+/g, ' ').trim();
+  const time = (t) => new Date(t).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
+  const TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
+  const BANG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 7v6"/><path d="M12 17h.01"/></svg>';
+
+  // Same list the raffle uses — suggestions only, any ministry can be typed.
+  const MINISTRIES = ['NXTGEN', 'ELEVATE MINI', 'ELEVATE', 'SINGLES', 'COUPLES', 'KSP', 'SHEPHERD', 'PASTORAL', 'EXALT', 'WELCOME', 'HOST TEAM', 'DGM', 'B1G', 'WOMEN2WOMEN', 'ACROSS', 'LIVE PROD', 'MEDIA', 'ADMIN'];
+  $('ministries').innerHTML = MINISTRIES.map((m) => `<option value="${m}">`).join('');
+
+  let state = { rsvps: [], checkins: [], rsvp: {} };
+  let loadedOnce = false;
+  let offline = false; // can't reach the check-in program
+  const API = String(window.CHECKIN_API || '').trim(); // Google Sheet script, or '' for the laptop program
+  // Opened by double-clicking the file, with no online address set?
+  const openedAsFile = !API && !/^https?:$/.test(location.protocol);
+  const HOME = 'http://localhost:5185/';
+
+  async function api(action, data) {
+    let res;
+    if (API) {
+      // text/plain keeps the browser from sending an extra "preflight" request Google can't answer
+      res = data
+        ? await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action, ...data }) })
+        : await fetch(`${API}?action=${action}`);
+    } else {
+      res = await fetch(`/api/${action}`, data ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) } : {});
+    }
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok || out.error) throw new Error(out.error || 'Something went wrong. Please try again.');
+    return out;
+  }
+
+  async function refresh() {
+    if (openedAsFile) { offline = true; renderResults(); return; }
+    try {
+      state = await api('state');
+      loadedOnce = true; offline = false;
+      $('event-name').textContent = state.eventName || 'Event Check-in';
+      document.title = `Check-in · ${state.eventName || 'CCF Binangonan'}`;
+      renderFoot();
+      if (!$('view-search').hidden) renderResults();
+    } catch (e) {
+      offline = true;
+      $('foot').innerHTML = API
+        ? '<span class="warn">Can’t reach the online check-in — check this device’s internet connection. Retrying…</span>'
+        : '<span class="warn">Cannot reach the check-in program. Make sure its black window on this laptop is still open.</span>';
+      if (!loadedOnce) renderResults();
+    }
+  }
+
+  function renderFoot() {
+    const r = state.rsvp || {};
+    const here = state.checkins.length;
+    let s = `${state.rsvps.length} RSVPs · ${here} here so far`;
+    if (r.error) s += ` · <span class="warn">${r.source === 'saved copy' ? 'Using saved RSVP list' : 'RSVP list not updated'} (${esc(r.error)})</span>`;
+    $('foot').innerHTML = s;
+  }
+
+  // ---------- Search ----------
+  function search(q) {
+    const toks = norm(q).split(' ').filter(Boolean);
+    if (!toks.length || norm(q).replace(/ /g, '').length < 2) return null;
+    const hits = [];
+    for (const p of state.rsvps) {
+      const words = p.search.split(' ');
+      if (!toks.every((t) => words.some((w) => w.startsWith(t)))) continue;
+      const lastWords = norm(p.last).split(' ');
+      const score = (lastWords.some((w) => w.startsWith(toks[0])) ? 0 : 1) + (p.checkedInAt ? 0.5 : 0);
+      hits.push({ p, score });
+    }
+    hits.sort((a, b) => a.score - b.score || a.p.last.localeCompare(b.p.last) || a.p.first.localeCompare(b.p.first));
+    return hits.map((h) => h.p);
+  }
+
+  let shown = [];
+  // Only touch the page when something changed, so a background refresh never swallows a tap
+  let lastHtml = '';
+  const resultsBox = { set innerHTML(h) { if (h !== lastHtml) { lastHtml = h; $('results').innerHTML = h; } } };
+  function renderResults() {
+    const q = $('q').value;
+    $('clear-q').hidden = !q;
+    const box = resultsBox;
+    if (!loadedOnce) {
+      box.innerHTML = !offline ? '<div class="note">Loading the RSVP list…</div>'
+        : openedAsFile
+          ? `<div class="note"><b>This page was opened as a file, so it can't see the RSVP list.</b><br>Double-click <b>start.bat</b> in the checkin folder, then use <a href="${HOME}">${HOME}</a></div>`
+          : API ? '<div class="note"><b>Can’t reach the online check-in.</b><br>Check this device’s internet connection. This page keeps trying by itself.</div>'
+          : '<div class="note"><b>Can’t reach the check-in program.</b><br>Double-click <b>start.bat</b> in the checkin folder and keep its black window open. This page will connect by itself.</div>';
+      return;
+    }
+    const hits = search(q);
+    if (hits === null) { box.innerHTML = ''; shown = []; return; }
+    if (!hits.length) {
+      shown = [];
+      box.innerHTML = `<div class="note">We can't find <b>“${esc(q.trim())}”</b> in the RSVP list.<br>Try your first name or last name only — or register as a walk-in below.</div>`;
+      return;
+    }
+    shown = hits.slice(0, 8);
+    box.innerHTML = shown.map((p, i) => {
+      const meta = [p.ministry, p.nickname && `“${p.nickname}”`].filter(Boolean).map(esc).join(' · ');
+      return p.checkedInAt
+        ? `<div class="person done"><div class="who"><div class="name">${esc(p.full)}</div><div class="meta">${meta}</div></div><div class="go">✓ Checked in at ${time(p.checkedInAt)}</div></div>`
+        : `<button class="person" data-i="${i}"><div class="who"><div class="name">${esc(p.full)}</div><div class="meta">${meta}</div></div><div class="go">This is me</div></button>`;
+    }).join('') + (hits.length > 8 ? `<div class="note">${hits.length - 8} more — type more of your name to narrow it down.</div>` : '');
+  }
+
+  $('q').addEventListener('input', () => { renderResults(); poke(); });
+  $('q').addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') {
+      ev.preventDefault(); // stop this same Enter from also pressing "Yes" in the dialog it opens
+      const open = shown.filter((p) => !p.checkedInAt);
+      if (open.length === 1) confirmCheckin(open[0]);
+    }
+  });
+  $('clear-q').addEventListener('click', () => { $('q').value = ''; renderResults(); $('q').focus(); });
+  $('results').addEventListener('click', (ev) => {
+    const b = ev.target.closest('button.person'); if (!b) return;
+    confirmCheckin(shown[Number(b.dataset.i)]);
+  });
+
+  // ---------- Dialogs ----------
+  let closeTimer = null, countTimer = null;
+  function openDialog(html) {
+    clearTimeout(closeTimer); clearInterval(countTimer);
+    $('dialog').innerHTML = html;
+    $('overlay').hidden = false;
+    const first = $('dialog').querySelector('[data-focus]') || $('dialog').querySelector('button');
+    if (document.activeElement) document.activeElement.blur();
+    if (first) setTimeout(() => first.focus(), 80); // a moment later, so a key already pressed can't hit it
+  }
+  function closeDialog() {
+    clearTimeout(closeTimer); clearInterval(countTimer);
+    $('overlay').hidden = true;
+  }
+  function autoClose(seconds, then) {
+    let left = seconds;
+    const el = $('dialog').querySelector('.countdown');
+    const tick = () => { if (el) el.textContent = `This screen closes in ${left}s`; };
+    tick();
+    countTimer = setInterval(() => { left--; tick(); if (left <= 0) { closeDialog(); then(); } }, 1000);
+  }
+  $('overlay').addEventListener('click', (ev) => { if (ev.target === $('overlay') && $('dialog').dataset.kind === 'confirm') closeDialog(); });
+  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !$('overlay').hidden) closeDialog(); });
+
+  function confirmCheckin(p) {
+    if (!p) return;
+    $('dialog').dataset.kind = 'confirm';
+    const meta = [p.ministry, p.nickname && `“${p.nickname}”`].filter(Boolean).map(esc).join(' · ');
+    openDialog(`
+      <p class="q">Check in as</p>
+      <div class="big-name">${esc(p.full)}</div>
+      <p class="meta">${meta}</p>
+      <div class="actions">
+        <button class="btn big" id="yes" data-focus>Yes, check me in</button>
+        <button class="btn ghost big" id="no">Not me</button>
+      </div>`);
+    $('no').onclick = () => { closeDialog(); $('q').focus(); };
+    $('yes').onclick = async () => {
+      $('yes').disabled = true; $('yes').textContent = 'Checking in…';
+      try {
+        const r = await api('checkin', { rsvpId: p.id });
+        p.checkedInAt = r.checkin.at;
+        showWelcome(p.nickname || p.first || p.full, r.already
+          ? `You were already checked in at ${time(r.checkin.at)}.`
+          : 'You’re checked in. Enjoy the night!', !r.already);
+        refresh();
+      } catch (e) {
+        showProblem(e.message);
+      }
+    };
+  }
+
+  function showWelcome(name, line, raffle) {
+    $('dialog').dataset.kind = 'welcome';
+    openDialog(`
+      <div class="tick">${TICK}</div>
+      <div class="welcome">Welcome, ${esc(String(name).toUpperCase())}!</div>
+      <p class="welcome-sub">${esc(line)}</p>
+      ${raffle ? '<div class="raffle-badge">🎁 Your name is now in the raffle</div>' : ''}
+      <div class="actions"><button class="btn big" id="done" data-focus>Done</button></div>
+      <p class="countdown"></p>`);
+    $('done').onclick = () => { closeDialog(); resetAll(); };
+    autoClose(6, resetAll);
+  }
+
+  function showProblem(msg) {
+    $('dialog').dataset.kind = 'confirm';
+    openDialog(`
+      <div class="tick warn">${BANG}</div>
+      <div class="welcome" style="font-size:28px">Sorry, that didn't work</div>
+      <p class="welcome-sub">${esc(msg)}</p>
+      <div class="actions"><button class="btn big" id="ok" data-focus>OK</button></div>`);
+    $('ok').onclick = closeDialog;
+  }
+
+  // ---------- Walk-in ----------
+  function showView(name) {
+    $('view-search').hidden = name !== 'search';
+    $('view-walkin').hidden = name !== 'walkin';
+    (name === 'search' ? $('q') : $('w-last')).focus();
+  }
+  $('go-walkin').addEventListener('click', () => {
+    // If they already typed a name, carry it over
+    const t = $('q').value.trim();
+    if (t && !$('w-last').value && !$('w-first').value) {
+      if (t.includes(',')) { const [l, ...f] = t.split(','); $('w-last').value = l.trim(); $('w-first').value = f.join(' ').trim(); }
+    }
+    $('w-error').hidden = true;
+    showView('walkin');
+  });
+  $('w-back').addEventListener('click', () => showView('search'));
+
+  // Uppercase as they type (same as the raffle)
+  document.addEventListener('input', (ev) => {
+    const t = ev.target;
+    if (ev.isComposing || t.tagName !== 'INPUT' || t.type !== 'text') return;
+    const up = t.value.toUpperCase();
+    if (up === t.value) return;
+    const s = t.selectionStart, e = t.selectionEnd;
+    t.value = up;
+    try { t.setSelectionRange(s, e); } catch (err) {}
+  }, true);
+
+  // Did this "walk-in" actually RSVP? Match on last + first name words.
+  function findRsvpFor(last, first) {
+    const L = norm(last).split(' ').filter(Boolean), F = norm(first).split(' ').filter(Boolean);
+    if (!L.length || !F.length) return null;
+    return state.rsvps.find((p) => {
+      const words = p.search.split(' ');
+      return L.every((t) => words.includes(t)) && words.some((w) => w.startsWith(F[0]));
+    }) || null;
+  }
+
+  $('walkin-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const person = { last: $('w-last').value, first: $('w-first').value, mi: $('w-mi').value, ministry: $('w-min').value };
+    $('w-error').hidden = true;
+    const match = findRsvpFor(person.last, person.first);
+    if (match && !match.checkedInAt) {
+      $('dialog').dataset.kind = 'confirm';
+      openDialog(`
+        <p class="q">Good news — we found your RSVP!</p>
+        <div class="big-name">${esc(match.full)}</div>
+        <p class="meta">${esc(match.ministry)}</p>
+        <div class="actions">
+          <button class="btn big" id="use-rsvp" data-focus>That's me — check in</button>
+          <button class="btn ghost big" id="not-rsvp">Not me</button>
+        </div>`);
+      $('use-rsvp').onclick = () => { closeDialog(); confirmCheckin(match); };
+      $('not-rsvp').onclick = () => { closeDialog(); registerWalkin(person); };
+      return;
+    }
+    registerWalkin(person);
+  });
+
+  async function registerWalkin(person) {
+    const btn = $('w-submit');
+    btn.disabled = true; btn.textContent = 'Registering…';
+    try {
+      const r = await api('walkin', person);
+      showWelcome(r.checkin.first, 'You’re registered. Enjoy the night!', true);
+      refresh();
+    } catch (e) {
+      $('w-error').textContent = e.message; $('w-error').hidden = false;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Register';
+    }
+  }
+
+  // ---------- Reset for the next person ----------
+  function resetAll() {
+    $('q').value = '';
+    ['w-last', 'w-first', 'w-mi', 'w-min'].forEach((id) => { $(id).value = ''; });
+    $('w-error').hidden = true;
+    showView('search');
+    renderResults();
+  }
+  // If someone walks away mid-way, clear the screen after 60 seconds of no activity
+  let idle = null;
+  function poke() { clearTimeout(idle); idle = setTimeout(() => { if ($('overlay').hidden) resetAll(); }, 60_000); }
+  ['keydown', 'pointerdown'].forEach((e) => document.addEventListener(e, poke));
+
+  refresh();
+  setInterval(refresh, 8000);
+  renderResults();
+})();
+</script>
+</body>
+</html>
