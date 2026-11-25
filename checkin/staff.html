@@ -15,78 +15,101 @@
     --ok: #17663a; --ok-soft: #e7f6ec; --warm: #c2410c; --warm-soft: #fff1ea; --error: #b42318; --radius: 14px;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--ground); color: var(--ink); font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 16px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  html, body { margin: 0; background: var(--ground); color: var(--ink); font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%; }
   h1, h2, p { margin: 0; }
   button, input { font: inherit; color: inherit; }
   button { cursor: pointer; }
   [hidden] { display: none !important; }
 
-  .topbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+  .topbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; }
-  .brand img { width: 34px; height: 34px; }
-  .brand small { display: block; font-weight: 600; color: var(--muted); font-size: 13px; }
-  .links { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
-  .page { max-width: 1080px; margin: 0 auto; padding: 20px 20px 60px; }
+  .brand img { width: 30px; height: 30px; }
+  .brand small { display: block; font-weight: 600; color: var(--muted); font-size: 12px; }
+  .links { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+  .links .btn { padding: 6px 12px; font-size: 13px; }
+  .page { max-width: 1040px; margin: 0 auto; padding: 16px 20px 48px; }
 
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
-  .stat .n { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-  .stat .l { color: var(--muted); font-size: 14px; font-weight: 600; }
+  .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+  .stat .n { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .stat .l { color: var(--muted); font-size: 13px; font-weight: 600; line-height: 1.3; }
   .stat.ok .n { color: var(--ok); }
   .stat.warm .n { color: var(--warm); }
 
-  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; margin-top: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin-top: 14px; }
   .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   .seg { display: inline-flex; background: var(--ground); border-radius: 999px; padding: 3px; gap: 2px; flex-wrap: wrap; }
-  .seg button { border: 0; background: transparent; padding: 7px 14px; border-radius: 999px; font-weight: 700; color: var(--muted); font-size: 14px; }
+  .seg button { border: 0; background: transparent; padding: 6px 12px; border-radius: 999px; font-weight: 700; color: var(--muted); font-size: 13px; white-space: nowrap; }
   .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
   .spacer { flex: 1; }
-  input[type=text] { border: 1px solid #d5d7e3; border-radius: 10px; padding: 8px 11px; background: #fff; min-width: 220px; }
+  input[type=text] { border: 1px solid #d5d7e3; border-radius: 9px; padding: 7px 11px; background: #fff; min-width: 220px; font-size: 14px; }
   input:focus { outline: 2px solid var(--brand); outline-offset: 1px; border-color: transparent; }
-  .btn { border: 1px solid transparent; background: var(--accent); color: #fff; font-weight: 700; padding: 8px 14px; border-radius: 10px; white-space: nowrap; text-decoration: none; display: inline-block; font-size: 15px; }
+  .btn { border: 1px solid transparent; background: var(--accent); color: #fff; font-weight: 700; padding: 7px 13px; border-radius: 9px; white-space: nowrap; text-decoration: none; display: inline-block; font-size: 14px; }
   .btn:hover { background: var(--accent-dark); }
   .btn.ghost { background: #fff; color: var(--accent-ink); border-color: #d5d7e3; }
   .btn.ghost:hover { background: var(--accent-soft); }
   .btn.danger { background: #fff; color: var(--error); border-color: #f0c4c0; }
   .btn.danger:hover { background: #fdecea; }
-  .btn.small { padding: 4px 10px; font-size: 14px; }
+  .btn.small { padding: 4px 10px; font-size: 13px; }
 
-  table { width: 100%; border-collapse: collapse; font-size: 15px; margin-top: 12px; }
-  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
   th { font-size: 13px; color: var(--muted); font-weight: 700; position: sticky; top: 0; background: #fff; }
   td.actions { text-align: right; white-space: nowrap; width: 1%; }
   .name { font-weight: 700; text-transform: uppercase; }
-  .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
   .pill.ok { background: var(--ok-soft); color: var(--ok); }
   .pill.walk { background: var(--accent-soft); color: var(--accent-ink); }
   .pill.no { background: var(--ground); color: var(--muted); }
   .muted { color: var(--muted); }
   .empty { padding: 28px; text-align: center; color: var(--muted); }
-  .status { font-size: 14px; color: var(--muted); margin-top: 10px; }
+  .status { font-size: 13px; color: var(--muted); margin-top: 8px; }
   .status .warn { color: var(--warm); font-weight: 700; }
   /* PIN screen */
   body.locked .page, body.locked .links { display: none; }
   .lock { max-width: 420px; margin: 12vh auto 0; padding: 0 20px; }
   .lock .card { text-align: center; padding: 28px 24px; }
-  .lock img { width: 56px; height: 56px; }
-  .lock h1 { font-size: 22px; font-weight: 800; margin-top: 10px; }
+  .lock img { width: 48px; height: 48px; }
+  .lock h1 { font-size: 20px; font-weight: 800; margin-top: 8px; }
   .lock p { color: var(--muted); margin-top: 4px; }
   .lock form { display: flex; gap: 8px; margin-top: 18px; }
-  .lock input { flex: 1; min-width: 0; font-size: 20px; text-align: center; letter-spacing: .2em; border: 1px solid #d5d7e3; border-radius: 10px; padding: 10px; }
+  .lock input { flex: 1; min-width: 0; font-size: 18px; text-align: center; letter-spacing: .2em; border: 1px solid #d5d7e3; border-radius: 10px; padding: 10px; }
   .lock .err { color: var(--error); font-weight: 700; margin-top: 10px; min-height: 1.4em; }
   .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 10px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 50; }
   .toast.show { opacity: 1; }
 
+  @media (max-width: 860px) {
+    .stats { grid-template-columns: repeat(3, 1fr); }
+  }
+  /* ---------- Phones ---------- */
   @media (max-width: 640px) {
-    .page { padding: 12px 12px 48px; }
-    .links { margin-left: 0; width: 100%; }
-    input[type=text] { min-width: 0; flex: 1 1 100%; font-size: 16px; }
+    html, body { font-size: 14px; }
+    .topbar { padding: 8px 12px; gap: 8px; }
+    .brand { font-size: 14px; gap: 8px; }
+    .brand img { width: 26px; height: 26px; }
+    .brand small { font-size: 11px; }
+    .links { margin-left: 0; width: 100%; flex-wrap: nowrap; }
+    .links .btn { flex: 1 1 0; text-align: center; padding: 6px 6px; font-size: 12px; }
+    .page { padding: 10px 10px 40px; }
+    .stats { gap: 6px; }
+    .stat { padding: 7px 9px; border-radius: 10px; }
+    .stat .n { font-size: 19px; }
+    .stat .l { font-size: 11px; }
+    .card { padding: 12px; margin-top: 10px; }
+    .seg { display: flex; flex-wrap: nowrap; overflow-x: auto; width: 100%; scrollbar-width: none; }
+    .seg::-webkit-scrollbar { display: none; }
+    .seg button { flex: 1 0 auto; padding: 6px 10px; font-size: 12px; }
+    .toolbar .spacer { display: none; }
+    input[type=text] { min-width: 0; flex: 1 1 100%; font-size: 16px; } /* 16px stops iPhones zooming in */
+    .toolbar .btn.small { flex: 1 1 0; text-align: center; font-size: 12px; padding: 5px 6px; }
+    .status { font-size: 12px; }
     thead { display: none; }
     table, tbody { display: block; }
-    tr { display: flex; flex-wrap: wrap; gap: 4px 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
-    td { border: 0; padding: 0; }
-    td.n-full { flex: 1 1 100%; }
-    td.actions { margin-left: auto; }
+    tr { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 8px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+    td { border: 0; padding: 0; font-size: 13px; }
+    td.n-full { flex: 1 1 100%; font-size: 14px; }
+    td.actions { margin-left: auto; width: auto; }
+    .lock { margin-top: 8vh; padding: 0 14px; }
   }
 </style>
 </head>
@@ -94,8 +117,8 @@
 <header class="topbar">
   <div class="brand"><img src="ccf-logo.png" alt="" /><div>Check-in staff<small id="event-name"></small></div></div>
   <div class="links">
-    <a class="btn ghost" href="./" target="_blank">Open check-in screen</a>
-    <a class="btn ghost" id="raffle-link" href="../" target="_blank">Open raffle</a>
+    <a class="btn ghost" href="./" target="_blank">Check-in screen</a>
+    <a class="btn ghost" id="raffle-link" href="../" target="_blank">Raffle</a>
     <button class="btn ghost" id="lock-btn" hidden title="Ask for the PIN again on this device">Lock</button>
   </div>
 </header>
@@ -103,10 +126,10 @@
 <div class="page">
   <div class="stats">
     <div class="stat"><div class="n" id="s-rsvp">–</div><div class="l">RSVPs</div></div>
-    <div class="stat ok"><div class="n" id="s-in">–</div><div class="l">RSVPs checked in</div></div>
+    <div class="stat ok"><div class="n" id="s-in">–</div><div class="l">Checked in</div></div>
     <div class="stat"><div class="n" id="s-walk">–</div><div class="l">Walk-ins</div></div>
-    <div class="stat ok"><div class="n" id="s-here">–</div><div class="l">Total here (in the raffle)</div></div>
-    <div class="stat warm"><div class="n" id="s-not">–</div><div class="l">RSVPs not yet here</div></div>
+    <div class="stat ok"><div class="n" id="s-here">–</div><div class="l">Total here</div></div>
+    <div class="stat warm"><div class="n" id="s-not">–</div><div class="l">Not yet here</div></div>
   </div>
 
   <div class="card">
@@ -121,8 +144,8 @@
       <input type="text" id="q" placeholder="Search name or ministry…" />
     </div>
     <div class="toolbar" style="margin-top:10px">
-      <button class="btn ghost small" id="reload">Re-read RSVP sheet now</button>
-      <button class="btn ghost small" id="report">Download attendance (CSV)</button>
+      <button class="btn ghost small" id="reload">Re-read RSVPs</button>
+      <button class="btn ghost small" id="report">Download attendance</button>
     </div>
     <p class="status" id="status"></p>
     <div id="list"></div>
